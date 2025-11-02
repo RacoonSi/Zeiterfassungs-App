@@ -1,0 +1,17 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "username": "Rocket",
+      "password": "Raccoon",
+      "displayName": "Rocket",
+      "role": "admin",
+      "createdAt": "2024-11-02T10:00:00Z"
+    }
+  ],
+  "settings": {
+    "sessionTimeout": 86400000,
+    "maxLoginAttempts": 5,
+    "lockoutDuration": 300000
+  }
+}
