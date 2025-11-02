@@ -1,0 +1,2452 @@
+<!doctype html>
+<html lang="de">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ZSL Zeit">
+  <meta name="theme-color" content="#3b82f6">
+  <meta name="description" content="Zeiterfassungs-App für ZSL - Perfekt für unterwegs!">
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+  
+  <!-- Icons -->
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-512.png">
+  
+
+  <title>Zeiterfassung - ZSL</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      -webkit-overflow-scrolling: touch;
+    }
+    html {
+      height: 100%;
+    }
+    
+    @keyframes slideInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.8; }
+    }
+    
+    @keyframes bounce {
+      0%, 20%, 53%, 80%, 100% { transform: translate3d(0,0,0); }
+      40%, 43% { transform: translate3d(0, -8px, 0); }
+      70% { transform: translate3d(0, -4px, 0); }
+      90% { transform: translate3d(0, -2px, 0); }
+    }
+    
+    @keyframes glow {
+      0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+      50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.6); }
+    }
+    
+    .slide-in-up {
+      animation: slideInUp 0.6s ease-out;
+    }
+    
+    .fade-in {
+      animation: fadeIn 0.4s ease-out;
+    }
+    
+    .pulse-animation {
+      animation: pulse 3s infinite;
+    }
+    
+    .bounce-animation {
+      animation: bounce 2s infinite;
+    }
+    
+    .glow-animation {
+      animation: glow 2s infinite;
+    }
+    
+    .glass-card {
+      backdrop-filter: blur(20px);
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+    
+    .gradient-border {
+      position: relative;
+      background: linear-gradient(45deg, #667eea, #764ba2, #f093fb, #f5576c);
+      background-size: 400% 400%;
+      animation: gradientShift 4s ease infinite;
+      padding: 2px;
+      border-radius: 16px;
+    }
+    
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    
+    .gradient-border > div {
+      background: white;
+      border-radius: 14px;
+      padding: 16px;
+    }
+    
+    .hover-scale {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .hover-scale:active {
+      transform: scale(0.98);
+    }
+    
+    .time-input {
+      transition: all 0.3s ease;
+      position: relative;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+    }
+    
+    .time-input:focus {
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+    }
+    
+    .category-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 16px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    
+    .floating-action {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s ease;
+      z-index: 100;
+      border: none;
+      cursor: pointer;
+    }
+    
+    .floating-action:active {
+      transform: scale(0.95);
+    }
+    
+    .stats-card {
+      background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: all 0.3s ease;
+    }
+    
+    .stats-card:active {
+      transform: scale(0.98);
+    }
+    
+    .progress-ring {
+      transform: rotate(-90deg);
+    }
+    
+    .progress-ring-circle {
+      transition: stroke-dashoffset 0.5s ease-in-out;
+    }
+    
+    /* Mobile Navigation */
+    .mobile-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(30, 41, 59, 0.95);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px 0;
+      z-index: 50;
+    }
+    
+    .mobile-nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 4px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      border-radius: 12px;
+      margin: 0 4px;
+    }
+    
+    .mobile-nav-item.active {
+      background: rgba(59, 130, 246, 0.2);
+    }
+    
+    .mobile-nav-item:active {
+      transform: scale(0.95);
+    }
+    
+    .mobile-nav-icon {
+      font-size: 20px;
+      margin-bottom: 2px;
+    }
+    
+    .mobile-nav-text {
+      font-size: 10px;
+      font-weight: 600;
+    }
+    
+    /* Mobile Optimizations */
+    @media (max-width: 768px) {
+      .gradient-border > div {
+        padding: 12px;
+      }
+      
+      .floating-action {
+        display: none;
+      }
+      
+      .mobile-only {
+        display: block !important;
+      }
+      
+      .desktop-only {
+        display: none !important;
+      }
+      
+      .mobile-grid {
+        grid-template-columns: 1fr !important;
+      }
+      
+      .mobile-text-sm {
+        font-size: 14px !important;
+      }
+      
+      .mobile-text-xs {
+        font-size: 12px !important;
+      }
+      
+      .mobile-p-2 {
+        padding: 8px !important;
+      }
+      
+      .mobile-p-3 {
+        padding: 12px !important;
+      }
+      
+      .mobile-mb-2 {
+        margin-bottom: 8px !important;
+      }
+      
+      .mobile-mb-4 {
+        margin-bottom: 16px !important;
+      }
+      
+      .mobile-gap-2 {
+        gap: 8px !important;
+      }
+      
+      .mobile-gap-3 {
+        gap: 12px !important;
+      }
+      
+      .mobile-rounded {
+        border-radius: 12px !important;
+      }
+      
+      .mobile-progress-sm {
+        width: 120px !important;
+        height: 120px !important;
+      }
+      
+      .mobile-progress-sm svg {
+        width: 120px !important;
+        height: 120px !important;
+      }
+      
+      .mobile-progress-sm .absolute {
+        font-size: 14px !important;
+      }
+      
+      .mobile-progress-sm .text-4xl {
+        font-size: 24px !important;
+      }
+      
+      .mobile-progress-sm .text-6xl {
+        font-size: 32px !important;
+      }
+    }
+    
+    /* Touch-friendly buttons */
+    button, .btn {
+      min-height: 44px;
+      min-width: 44px;
+      touch-action: manipulation;
+    }
+    
+    input, select, textarea {
+      min-height: 44px;
+      font-size: 16px; /* Prevents zoom on iOS */
+    }
+    
+    /* Prevent horizontal scroll */
+    .container-mobile {
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+    
+    /* Better touch scrolling */
+    .scroll-container {
+      -webkit-overflow-scrolling: touch;
+      overflow-y: auto;
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body class="h-full">
+  <div id="app" class="h-full flex flex-col"></div>
+  <script>
+    const defaultConfig = {
+      background_color: "#0f172a",
+      surface_color: "#1e293b", 
+      text_color: "#f8fafc",
+      primary_action_color: "#3b82f6",
+      secondary_action_color: "#64748b",
+      font_family: "Inter",
+      font_size: 16,
+      app_title: "Zeiterfassung",
+      company_name: "ZSL",
+      weekly_target: "5",
+      export_button_text: "📊 Detailreport exportieren"
+    };
+
+    let timeEntries = [];
+    let todoItems = [];
+    let currentView = 'dashboard';
+
+    // Lokale Datenspeicherung
+    function saveToLocalStorage() {
+      try {
+        localStorage.setItem('zeiterfassung_zsl_entries', JSON.stringify(timeEntries));
+        localStorage.setItem('zeiterfassung_zsl_todos', JSON.stringify(todoItems));
+        console.log('Daten erfolgreich lokal gespeichert');
+      } catch (error) {
+        console.error('Fehler beim lokalen Speichern:', error);
+      }
+    }
+
+    function loadFromLocalStorage() {
+      try {
+        const savedEntries = localStorage.getItem('zeiterfassung_zsl_entries');
+        if (savedEntries) {
+          timeEntries = JSON.parse(savedEntries);
+          console.log('Zeiteinträge erfolgreich geladen:', timeEntries.length, 'Einträge');
+        }
+        
+        const savedTodos = localStorage.getItem('zeiterfassung_zsl_todos');
+        if (savedTodos) {
+          todoItems = JSON.parse(savedTodos);
+          console.log('To-Dos erfolgreich geladen:', todoItems.length, 'To-Dos');
+        }
+      } catch (error) {
+        console.error('Fehler beim Laden der Daten:', error);
+        timeEntries = [];
+        todoItems = [];
+      }
+    }
+
+    function generateId() {
+      return 'entry_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    const categories = [
+      { id: 'development', name: 'Entwicklung', icon: '💻', color: '#3b82f6' },
+      { id: 'meeting', name: 'Meetings', icon: '👥', color: '#10b981' },
+      { id: 'planning', name: 'Planung', icon: '📋', color: '#f59e0b' },
+      { id: 'documentation', name: 'Dokumentation', icon: '📝', color: '#8b5cf6' },
+      { id: 'support', name: 'Support', icon: '🛠️', color: '#ef4444' },
+      { id: 'training', name: 'Schulung', icon: '🎓', color: '#06b6d4' },
+      { id: 'other', name: 'Sonstiges', icon: '📦', color: '#64748b' }
+    ];
+
+    const todoPriorities = [
+      { id: 'low', name: 'Niedrig', icon: '🟢', color: '#10b981' },
+      { id: 'medium', name: 'Mittel', icon: '🟡', color: '#f59e0b' },
+      { id: 'high', name: 'Hoch', icon: '🟠', color: '#f97316' },
+      { id: 'urgent', name: 'Dringend', icon: '🔴', color: '#ef4444' }
+    ];
+
+    function getWeekNumber(date) {
+      const d = new Date(date);
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+      const yearStart = new Date(d.getFullYear(), 0, 1);
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return weekNo;
+    }
+
+    function getYear(date) {
+      return new Date(date).getFullYear();
+    }
+
+    function calculateDuration(startTime, endTime) {
+      if (!startTime || !endTime) return 0;
+      
+      const [startHour, startMin] = startTime.split(':').map(Number);
+      const [endHour, endMin] = endTime.split(':').map(Number);
+      
+      const startMinutes = startHour * 60 + startMin;
+      let endMinutes = endHour * 60 + endMin;
+      
+      if (endMinutes < startMinutes) {
+        endMinutes += 24 * 60;
+      }
+      
+      return (endMinutes - startMinutes) / 60;
+    }
+
+    function updateDurationDisplay() {
+      const startTime = document.getElementById('start-time-input')?.value;
+      const endTime = document.getElementById('end-time-input')?.value;
+      const durationDisplay = document.getElementById('duration-display');
+      
+      if (startTime && endTime && durationDisplay) {
+        const duration = calculateDuration(startTime, endTime);
+        if (duration > 0) {
+          durationDisplay.innerHTML = `
+            <div class="flex items-center gap-3 text-green-400 font-semibold slide-in-up">
+              <div class="w-3 h-3 bg-green-400 rounded-full bounce-animation"></div>
+              <span>${duration.toFixed(2)} Stunden erfasst</span>
+            </div>
+          `;
+        } else {
+          durationDisplay.innerHTML = `
+            <div class="flex items-center gap-3 text-orange-400 font-semibold">
+              <div class="w-3 h-3 bg-orange-400 rounded-full pulse-animation"></div>
+              <span>Bitte gültige Zeiten eingeben</span>
+            </div>
+          `;
+        }
+      }
+    }
+
+    // Schuljahr-Konfiguration
+    const SCHOOL_YEAR = {
+      startWeek: 38,
+      startYear: 2025,
+      endWeek: 31,
+      endYear: 2026,
+      vacationWeeks: 6,
+      weeklyHours: 5
+    };
+
+    function isInSchoolYear(week, year) {
+      // Prüfe ob die Woche im Schuljahr liegt
+      if (year === SCHOOL_YEAR.startYear && week >= SCHOOL_YEAR.startWeek) {
+        return true;
+      }
+      if (year === SCHOOL_YEAR.endYear && week <= SCHOOL_YEAR.endWeek) {
+        return true;
+      }
+      if (year > SCHOOL_YEAR.startYear && year < SCHOOL_YEAR.endYear) {
+        return true;
+      }
+      return false;
+    }
+
+    function calculateTotalRequiredHours() {
+      // Berechne die Gesamtanzahl der Arbeitswochen im Schuljahr
+      let totalWeeks = 0;
+      
+      // Wochen in 2025 (ab KW38)
+      totalWeeks += (52 - SCHOOL_YEAR.startWeek + 1);
+      
+      // Wochen in 2026 (bis KW31)
+      totalWeeks += SCHOOL_YEAR.endWeek;
+      
+      // Abzüglich Urlaubswochen
+      const workingWeeks = totalWeeks - SCHOOL_YEAR.vacationWeeks;
+      
+      return workingWeeks * SCHOOL_YEAR.weeklyHours;
+    }
+
+    function calculateWeekStats() {
+      const weekStats = {};
+      const today = new Date();
+      const currentWeek = getWeekNumber(today);
+      const currentYear = getYear(today);
+      
+      // Erstelle alle Wochen vom ersten Eintrag bis heute
+      if (timeEntries.length > 0) {
+        const oldestEntry = timeEntries.reduce((oldest, entry) => 
+          new Date(entry.date) < new Date(oldest.date) ? entry : oldest
+        );
+        
+        const startDate = new Date(oldestEntry.date);
+        const endDate = new Date(today);
+        
+        // Gehe durch alle Wochen von der ersten bis zur aktuellen
+        let currentDate = new Date(startDate);
+        while (currentDate <= endDate) {
+          const week = getWeekNumber(currentDate);
+          const year = getYear(currentDate);
+          const key = `${year}-KW${week}`;
+          
+          if (!weekStats[key]) {
+            weekStats[key] = {
+              week,
+              year,
+              total: 0,
+              entries: [],
+              categories: {},
+              isEmpty: true
+            };
+          }
+          
+          // Gehe zur nächsten Woche
+          currentDate.setDate(currentDate.getDate() + 7);
+        }
+      } else {
+        // Wenn keine Einträge vorhanden, erstelle zumindest die aktuelle Woche
+        const key = `${currentYear}-KW${currentWeek}`;
+        weekStats[key] = {
+          week: currentWeek,
+          year: currentYear,
+          total: 0,
+          entries: [],
+          categories: {},
+          isEmpty: true
+        };
+      }
+      
+      // Fülle die Wochen mit tatsächlichen Einträgen
+      timeEntries.forEach(entry => {
+        const week = getWeekNumber(entry.date);
+        const year = getYear(entry.date);
+        const key = `${year}-KW${week}`;
+        
+        if (weekStats[key]) {
+          weekStats[key].total += entry.duration;
+          weekStats[key].entries.push(entry);
+          weekStats[key].isEmpty = false;
+          
+          const category = entry.category || 'other';
+          if (!weekStats[key].categories[category]) {
+            weekStats[key].categories[category] = 0;
+          }
+          weekStats[key].categories[category] += entry.duration;
+        }
+      });
+
+      return Object.values(weekStats).sort((a, b) => {
+        if (a.year !== b.year) return b.year - a.year;
+        return b.week - a.week;
+      });
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      const bgColor = type === 'success' ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #ef4444, #dc2626)';
+      const icon = type === 'success' ? '🎉' : '⚠️';
+      
+      toast.innerHTML = `
+        <div class="flex items-center gap-3">
+          <span style="font-size: 20px;" class="bounce-animation">${icon}</span>
+          <span>${message}</span>
+        </div>
+      `;
+      
+      toast.style.cssText = `
+        position: fixed;
+        top: 24px;
+        right: 24px;
+        background: ${bgColor};
+        color: white;
+        padding: 16px 24px;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        z-index: 1000;
+        font-weight: 600;
+        backdrop-filter: blur(10px);
+        animation: slideInUp 0.5s ease-out;
+        max-width: 400px;
+      `;
+      
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.animation = 'slideInUp 0.5s ease-out reverse';
+        setTimeout(() => toast.remove(), 500);
+      }, 4000);
+    }
+
+    function renderDashboard() {
+      const config = window.elementSdk?.config || defaultConfig;
+      const customFont = config.font_family || defaultConfig.font_family;
+      const baseSize = config.font_size || defaultConfig.font_size;
+      const baseFontStack = 'system-ui, -apple-system, sans-serif';
+      const weeklyTarget = parseFloat(config.weekly_target || defaultConfig.weekly_target) || 40;
+      
+      const weekStats = calculateWeekStats();
+      const currentWeek = weekStats[0] || { total: 0, entries: [], categories: {} };
+      const totalHours = timeEntries.reduce((sum, entry) => sum + entry.duration, 0);
+      const avgHoursPerWeek = weekStats.length > 0 ? totalHours / weekStats.length : 0;
+      
+      // Schuljahr-Statistiken
+      const totalRequiredHours = calculateTotalRequiredHours();
+      const totalWorkedHours = timeEntries.filter(entry => {
+        const week = getWeekNumber(entry.date);
+        const year = getYear(entry.date);
+        return isInSchoolYear(week, year);
+      }).reduce((sum, entry) => sum + entry.duration, 0);
+      
+      const schoolYearProgress = Math.min((totalWorkedHours / totalRequiredHours) * 100, 100);
+      const remainingHours = Math.max(totalRequiredHours - totalWorkedHours, 0);
+      
+      // To-Do Statistiken
+      const totalTodos = todoItems.length;
+      const completedTodos = todoItems.filter(todo => todo.completed).length;
+      const pendingTodos = totalTodos - completedTodos;
+      const urgentTodos = todoItems.filter(todo => !todo.completed && todo.priority === 'urgent').length;
+      
+      // Berechne Fortschritt der aktuellen Woche
+      const weekProgress = Math.min((currentWeek.total / weeklyTarget) * 100, 100);
+      const circumference = 2 * Math.PI * 45;
+      const strokeDashoffset = circumference - (weekProgress / 100) * circumference;
+      
+      // Schuljahr-Fortschrittsring
+      const schoolYearCircumference = 2 * Math.PI * 90;
+      const schoolYearStrokeDashoffset = schoolYearCircumference - (schoolYearProgress / 100) * schoolYearCircumference;
+
+      return `
+        <div class="slide-in-up">
+          <!-- Aktuelle Datumsanzeige -->
+          <div class="text-center mb-6">
+            <div class="inline-flex items-center gap-4 px-8 py-4 rounded-2xl glow-animation" style="background: linear-gradient(135deg, ${config.primary_action_color || defaultConfig.primary_action_color}20 0%, ${config.secondary_action_color || defaultConfig.secondary_action_color}20 100%); border: 2px solid ${config.primary_action_color || defaultConfig.primary_action_color}40;">
+              <div class="text-4xl bounce-animation">📅</div>
+              <div class="text-center">
+                <p class="font-bold" style="font-size: ${baseSize * 1.4}px; color: ${config.text_color || defaultConfig.text_color};">
+                  ${new Date().toLocaleDateString('de-DE', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </p>
+                <p class="mt-1" style="font-size: ${baseSize}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                  KW${getWeekNumber(new Date())} ${new Date().getFullYear()} • Heute ist ein großartiger Tag für Produktivität! 🚀
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Header mit Firmenlogo und Navigation -->
+          <div class="gradient-border mb-4 mobile-mb-4">
+            <div style="background: linear-gradient(135deg, ${config.surface_color || defaultConfig.surface_color} 0%, ${config.background_color || defaultConfig.background_color} 100%);">
+              <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center mobile-gap-3">
+                <div class="text-center lg:text-left">
+                  <h1 class="font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400 pulse-animation mobile-text-sm" style="font-size: ${baseSize * 2}px; font-family: ${customFont}, ${baseFontStack};">
+                    🚀 ${config.app_title || defaultConfig.app_title}
+                  </h1>
+                  <p class="mt-2 opacity-80 mobile-text-xs" style="font-size: ${baseSize}px; color: ${config.text_color || defaultConfig.text_color};">
+                    ${config.company_name || defaultConfig.company_name} • Professionelle Zeiterfassung
+                  </p>
+                  <div class="mt-3 flex flex-wrap justify-center lg:justify-start items-center gap-2 mobile-gap-2">
+                    <span class="px-2 py-1 rounded-full text-xs font-bold mobile-text-xs" style="background: ${config.primary_action_color || defaultConfig.primary_action_color}20; color: ${config.primary_action_color || defaultConfig.primary_action_color};">
+                      📦 v2.1.0
+                    </span>
+                    <span class="px-2 py-1 rounded-full text-xs font-semibold mobile-text-xs" style="background: #10b98120; color: #10b981;">
+                      ✨ Excel
+                    </span>
+                    <span class="px-2 py-1 rounded-full text-xs font-semibold mobile-text-xs" style="background: #f59e0b20; color: #f59e0b;">
+                      🎯 Analytics
+                    </span>
+                  </div>
+                </div>
+                <div class="desktop-only flex gap-3 mt-4 lg:mt-0">
+                  <button onclick="switchView('analytics')" class="px-4 py-2 rounded-xl font-semibold transition-all duration-300 hover-scale flex items-center gap-2" style="background: linear-gradient(135deg, ${config.primary_action_color || defaultConfig.primary_action_color}, ${config.primary_action_color || defaultConfig.primary_action_color}dd); color: white; font-size: ${baseSize * 0.8}px;">
+                    📈 Analytics
+                  </button>
+                  <button onclick="switchView('todos')" class="px-4 py-2 rounded-xl font-semibold transition-all duration-300 hover-scale flex items-center gap-2" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; font-size: ${baseSize * 0.8}px;">
+                    ✅ To-Do
+                  </button>
+                  <button onclick="switchView('timesheet')" class="px-4 py-2 rounded-xl font-semibold transition-all duration-300 hover-scale flex items-center gap-2" style="background: linear-gradient(135deg, ${config.secondary_action_color || defaultConfig.secondary_action_color}, ${config.secondary_action_color || defaultConfig.secondary_action_color}dd); color: white; font-size: ${baseSize * 0.8}px;">
+                    📋 Zeit
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hauptfortschrittsanzeige für Schuljahr -->
+          <div class="gradient-border mb-8">
+            <div style="background: linear-gradient(135deg, ${config.surface_color || defaultConfig.surface_color} 0%, ${config.background_color || defaultConfig.background_color} 100%);">
+              <div class="text-center py-8">
+                <h2 class="font-bold mb-8 flex items-center justify-center gap-3" style="font-size: ${baseSize * 1.8}px; color: ${config.text_color || defaultConfig.text_color};">
+                  🎓 Schuljahr 2025/26 Fortschritt
+                </h2>
+                
+                <div class="flex flex-col lg:flex-row items-center justify-center gap-8 mobile-gap-3">
+                  <!-- Großer Fortschrittsring -->
+                  <div class="relative mobile-progress-sm">
+                    <svg class="progress-ring w-48 h-48 glow-animation mobile-progress-sm">
+                      <circle cx="96" cy="96" r="90" stroke="${config.secondary_action_color || defaultConfig.secondary_action_color}20" stroke-width="8" fill="none"/>
+                      <circle class="progress-ring-circle" cx="96" cy="96" r="90" stroke="${schoolYearProgress >= 100 ? '#10b981' : schoolYearProgress >= 75 ? '#f59e0b' : config.primary_action_color || defaultConfig.primary_action_color}" stroke-width="8" fill="none" stroke-dasharray="${schoolYearCircumference}" stroke-dashoffset="${schoolYearStrokeDashoffset}"/>
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                      <div class="text-6xl mb-2 bounce-animation mobile-progress-sm">${schoolYearProgress >= 100 ? '🎯' : schoolYearProgress >= 75 ? '🔥' : '📚'}</div>
+                      <div class="text-4xl font-bold mobile-progress-sm" style="color: ${schoolYearProgress >= 100 ? '#10b981' : schoolYearProgress >= 75 ? '#f59e0b' : config.primary_action_color || defaultConfig.primary_action_color};">
+                        ${schoolYearProgress.toFixed(0)}%
+                      </div>
+                      <div class="text-sm mt-1 mobile-progress-sm" style="color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                        von 195h
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Schuljahr-Details -->
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="text-center p-6 rounded-xl" style="background: linear-gradient(135deg, ${config.primary_action_color || defaultConfig.primary_action_color}20 0%, ${config.primary_action_color || defaultConfig.primary_action_color}10 100%);">
+                      <div class="text-4xl mb-3">📚</div>
+                      <h3 class="font-bold mb-2" style="color: ${config.text_color || defaultConfig.text_color}; font-size: ${baseSize * 1.1}px;">Gesamtstunden</h3>
+                      <p class="text-3xl font-bold" style="color: ${config.primary_action_color || defaultConfig.primary_action_color};">${totalRequiredHours}h</p>
+                      <p style="font-size: ${baseSize * 0.8}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">39 Arbeitswochen × 5h</p>
+                    </div>
+                    
+                    <div class="text-center p-6 rounded-xl" style="background: linear-gradient(135deg, #10b98120 0%, #10b98110 100%);">
+                      <div class="text-4xl mb-3">✅</div>
+                      <h3 class="font-bold mb-2" style="color: ${config.text_color || defaultConfig.text_color}; font-size: ${baseSize * 1.1}px;">Geleistet</h3>
+                      <p class="text-3xl font-bold" style="color: #10b981;">${totalWorkedHours.toFixed(1)}h</p>
+                      <p style="font-size: ${baseSize * 0.8}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">KW38/2025 - KW31/2026</p>
+                    </div>
+                    
+                    <div class="text-center p-6 rounded-xl" style="background: linear-gradient(135deg, ${remainingHours > 0 ? '#f59e0b20' : '#10b98120'} 0%, ${remainingHours > 0 ? '#f59e0b10' : '#10b98110'} 100%);">
+                      <div class="text-4xl mb-3">${remainingHours > 0 ? '⏰' : '🎯'}</div>
+                      <h3 class="font-bold mb-2" style="color: ${config.text_color || defaultConfig.text_color}; font-size: ${baseSize * 1.1}px;">Verbleibend</h3>
+                      <p class="text-3xl font-bold" style="color: ${remainingHours > 0 ? '#f59e0b' : '#10b981'};">${remainingHours.toFixed(1)}h</p>
+                      <p style="font-size: ${baseSize * 0.8}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">${remainingHours > 0 ? 'Noch zu leisten' : 'Ziel erreicht!'}</p>
+                    </div>
+                    
+                    <div class="text-center p-6 rounded-xl" style="background: linear-gradient(135deg, #8b5cf620 0%, #8b5cf610 100%);">
+                      <div class="text-4xl mb-3">🏖️</div>
+                      <h3 class="font-bold mb-2" style="color: ${config.text_color || defaultConfig.text_color}; font-size: ${baseSize * 1.1}px;">Urlaubswochen</h3>
+                      <p class="text-3xl font-bold" style="color: #8b5cf6;">${SCHOOL_YEAR.vacationWeeks}</p>
+                      <p style="font-size: ${baseSize * 0.8}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">Bereits berücksichtigt</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Fortschrittsbalken -->
+                <div class="mt-8 max-w-4xl mx-auto">
+                  <div class="flex justify-between items-center mb-3">
+                    <span class="font-semibold" style="color: ${config.text_color || defaultConfig.text_color}; font-size: ${baseSize * 1.1}px;">Schuljahr-Fortschritt</span>
+                    <span class="font-bold" style="color: ${schoolYearProgress >= 100 ? '#10b981' : schoolYearProgress >= 75 ? '#f59e0b' : config.primary_action_color || defaultConfig.primary_action_color}; font-size: ${baseSize * 1.2}px;">
+                      ${totalWorkedHours.toFixed(1)}h / ${totalRequiredHours}h
+                    </span>
+                  </div>
+                  <div class="w-full bg-gray-700 rounded-full h-8 relative overflow-hidden">
+                    <div class="h-8 rounded-full transition-all duration-1000 relative" style="width: ${Math.min(schoolYearProgress, 100)}%; background: linear-gradient(90deg, ${schoolYearProgress >= 100 ? '#10b981' : schoolYearProgress >= 75 ? '#f59e0b' : config.primary_action_color || defaultConfig.primary_action_color}, ${schoolYearProgress >= 100 ? '#059669' : schoolYearProgress >= 75 ? '#d97706' : config.primary_action_color || defaultConfig.primary_action_color}dd);">
+                      <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-20 animate-pulse"></div>
+                    </div>
+                    <div class="absolute inset-0 flex items-center justify-center">
+                      <span class="text-lg font-bold text-white drop-shadow-lg">
+                        ${schoolYearProgress.toFixed(1)}% erreicht
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Statistik Cards -->
+          <div class="grid grid-cols-2 md:grid-cols-6 gap-3 mobile-gap-2 mb-6 mobile-mb-4">
+            <div class="stats-card rounded-xl mobile-rounded mobile-p-3 text-center hover-scale" style="border-color: ${config.primary_action_color || defaultConfig.primary_action_color}40;">
+              <div class="relative w-16 h-16 md:w-24 md:h-24 mx-auto mb-2 md:mb-4">
+                <svg class="progress-ring w-16 h-16 md:w-24 md:h-24">
+                  <circle cx="32" cy="32" r="28" stroke="${config.secondary_action_color || defaultConfig.secondary_action_color}40" stroke-width="4" fill="none" class="md:hidden"/>
+                  <circle cx="48" cy="48" r="45" stroke="${config.secondary_action_color || defaultConfig.secondary_action_color}40" stroke-width="6" fill="none" class="hidden md:block"/>
+                  <circle class="progress-ring-circle md:hidden" cx="32" cy="32" r="28" stroke="${config.primary_action_color || defaultConfig.primary_action_color}" stroke-width="4" fill="none" stroke-dasharray="${2 * Math.PI * 28}" stroke-dashoffset="${2 * Math.PI * 28 - (weekProgress / 100) * 2 * Math.PI * 28}"/>
+                  <circle class="progress-ring-circle hidden md:block" cx="48" cy="48" r="45" stroke="${config.primary_action_color || defaultConfig.primary_action_color}" stroke-width="6" fill="none" stroke-dasharray="${circumference}" stroke-dashoffset="${strokeDashoffset}"/>
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <span class="text-lg md:text-2xl">📊</span>
+                </div>
+              </div>
+              <h3 class="font-bold mb-1 mobile-text-sm" style="font-size: ${baseSize}px; color: ${config.text_color || defaultConfig.text_color};">
+                ${currentWeek.total.toFixed(1)}h
+              </h3>
+              <p class="mobile-text-xs" style="font-size: ${baseSize * 0.8}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                Diese Woche<br>
+                <span style="font-size: ${baseSize * 0.7}px;">Ziel: ${weeklyTarget}h</span>
+              </p>
+            </div>
+
+            <div class="stats-card rounded-xl mobile-rounded mobile-p-3 text-center hover-scale">
+              <div class="text-2xl md:text-4xl mb-2 md:mb-4 bounce-animation">⏰</div>
+              <h3 class="font-bold mb-1 mobile-text-sm" style="font-size: ${baseSize}px; color: ${config.text_color || defaultConfig.text_color};">
+                ${totalHours.toFixed(1)}h
+              </h3>
+              <p class="mobile-text-xs" style="font-size: ${baseSize * 0.8}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                Gesamt<br>
+                <span style="font-size: ${baseSize * 0.7}px;">${timeEntries.length} Einträge</span>
+              </p>
+            </div>
+
+            <div class="stats-card rounded-xl mobile-rounded mobile-p-3 text-center hover-scale">
+              <div class="text-2xl md:text-4xl mb-2 md:mb-4 pulse-animation">📈</div>
+              <h3 class="font-bold mb-1 mobile-text-sm" style="font-size: ${baseSize}px; color: ${config.text_color || defaultConfig.text_color};">
+                ${avgHoursPerWeek.toFixed(1)}h
+              </h3>
+              <p class="mobile-text-xs" style="font-size: ${baseSize * 0.8}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                Ø Woche<br>
+                <span style="font-size: ${baseSize * 0.7}px;">${weekStats.length} Wochen</span>
+              </p>
+            </div>
+
+            <div class="stats-card rounded-xl mobile-rounded mobile-p-3 text-center hover-scale">
+              <div class="text-2xl md:text-4xl mb-2 md:mb-4">${weekProgress >= 100 ? '🎯' : weekProgress >= 75 ? '🔥' : '⚡'}</div>
+              <h3 class="font-bold mb-1 mobile-text-sm" style="font-size: ${baseSize}px; color: ${weekProgress >= 100 ? '#10b981' : weekProgress >= 75 ? '#f59e0b' : config.text_color || defaultConfig.text_color};">
+                ${weekProgress.toFixed(0)}%
+              </h3>
+              <p class="mobile-text-xs" style="font-size: ${baseSize * 0.8}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                Wochenziel<br>
+                <span style="font-size: ${baseSize * 0.7}px;">${(weeklyTarget - currentWeek.total).toFixed(1)}h übrig</span>
+              </p>
+            </div>
+
+            <div class="stats-card rounded-xl mobile-rounded mobile-p-3 text-center hover-scale" style="border-color: #8b5cf640;">
+              <div class="text-2xl md:text-4xl mb-2 md:mb-4 bounce-animation">✅</div>
+              <h3 class="font-bold mb-1 mobile-text-sm" style="font-size: ${baseSize}px; color: ${config.text_color || defaultConfig.text_color};">
+                ${completedTodos}
+              </h3>
+              <p class="mobile-text-xs" style="font-size: ${baseSize * 0.8}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                Erledigt<br>
+                <span style="font-size: ${baseSize * 0.7}px;">von ${totalTodos}</span>
+              </p>
+            </div>
+
+            <div class="stats-card rounded-xl mobile-rounded mobile-p-3 text-center hover-scale" style="border-color: ${urgentTodos > 0 ? '#ef444440' : '#10b98140'};">
+              <div class="text-2xl md:text-4xl mb-2 md:mb-4 ${urgentTodos > 0 ? 'pulse-animation' : ''}">${urgentTodos > 0 ? '🚨' : '😌'}</div>
+              <h3 class="font-bold mb-1 mobile-text-sm" style="font-size: ${baseSize}px; color: ${urgentTodos > 0 ? '#ef4444' : '#10b981'};">
+                ${urgentTodos}
+              </h3>
+              <p class="mobile-text-xs" style="font-size: ${baseSize * 0.8}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                Dringend<br>
+                <span style="font-size: ${baseSize * 0.7}px;">${pendingTodos} offen</span>
+              </p>
+            </div>
+          </div>
+
+          <!-- Aktuelle Woche Details -->
+          ${currentWeek.entries.length > 0 ? `
+            <div class="gradient-border mb-8">
+              <div style="background: linear-gradient(135deg, ${config.surface_color || defaultConfig.surface_color} 0%, ${config.background_color || defaultConfig.background_color} 100%);">
+                <h2 class="font-bold mb-6 flex items-center gap-3" style="font-size: ${baseSize * 1.5}px; color: ${config.text_color || defaultConfig.text_color};">
+                  🗓️ Aktuelle Woche (KW${currentWeek.week} ${currentWeek.year})
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  ${currentWeek.entries.slice(0, 6).map(entry => {
+                    const category = categories.find(c => c.id === entry.category) || categories[0];
+                    return `
+                      <div class="p-4 rounded-xl hover-scale fade-in" style="background: linear-gradient(135deg, ${config.surface_color || defaultConfig.surface_color}80 0%, ${config.background_color || defaultConfig.background_color}40 100%); border: 1px solid ${category.color}40;">
+                        <div class="flex items-start justify-between mb-3">
+                          <div class="category-badge" style="background: ${category.color}20; color: ${category.color};">
+                            ${category.icon} ${category.name}
+                          </div>
+                        </div>
+                        <p class="font-semibold mb-2" style="font-size: ${baseSize}px; color: ${config.text_color || defaultConfig.text_color};">
+                          📅 ${new Date(entry.date).toLocaleDateString('de-DE')}
+                        </p>
+                        <p class="mb-2" style="font-size: ${baseSize * 0.9}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                          🕐 ${entry.startTime} - ${entry.endTime} (${entry.duration.toFixed(2)}h)
+                        </p>
+                        <p style="font-size: ${baseSize * 0.85}px; color: ${config.text_color || defaultConfig.text_color}; opacity: 0.9;">
+                          ${entry.description}
+                        </p>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+                ${currentWeek.entries.length > 6 ? `
+                  <div class="text-center mt-6">
+                    <button onclick="switchView('timesheet')" class="px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover-scale" style="background: linear-gradient(135deg, ${config.primary_action_color || defaultConfig.primary_action_color}, ${config.primary_action_color || defaultConfig.primary_action_color}dd); color: white; font-size: ${baseSize * 0.9}px;">
+                      Alle ${currentWeek.entries.length} Einträge anzeigen →
+                    </button>
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+          ` : `
+            <div class="text-center py-16 rounded-2xl" style="background: linear-gradient(135deg, ${config.surface_color || defaultConfig.surface_color}40 0%, ${config.background_color || defaultConfig.background_color}20 100%);">
+              <div class="text-8xl mb-6 bounce-animation">🚀</div>
+              <h3 class="font-bold mb-4" style="font-size: ${baseSize * 1.5}px; color: ${config.text_color || defaultConfig.text_color};">
+                Bereit für den Start?
+              </h3>
+              <p class="mb-8" style="font-size: ${baseSize * 1.1}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                Erfasse deine erste Arbeitszeit und starte durch!
+              </p>
+              <button onclick="switchView('timesheet')" class="px-8 py-4 rounded-xl font-bold transition-all duration-300 hover-scale glow-animation" style="background: linear-gradient(135deg, ${config.primary_action_color || defaultConfig.primary_action_color}, ${config.primary_action_color || defaultConfig.primary_action_color}dd); color: white; font-size: ${baseSize * 1.1}px;">
+                ✨ Jetzt starten
+              </button>
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    function renderTimesheet() {
+      const config = window.elementSdk?.config || defaultConfig;
+      const customFont = config.font_family || defaultConfig.font_family;
+      const baseSize = config.font_size || defaultConfig.font_size;
+      const baseFontStack = 'system-ui, -apple-system, sans-serif';
+      
+      const weekStats = calculateWeekStats();
+
+      return `
+        <div class="slide-in-up">
+          <!-- Header -->
+          <div class="flex flex-col md:flex-row md:justify-between md:items-center mb-6 mobile-mb-4 gap-4">
+            <div class="text-center md:text-left">
+              <h1 class="font-bold flex items-center justify-center md:justify-start gap-3 mobile-text-sm" style="font-size: ${baseSize * 1.8}px; color: ${config.text_color || defaultConfig.text_color}; font-family: ${customFont}, ${baseFontStack};">
+                📋 Zeiterfassung
+              </h1>
+              <p class="mobile-text-xs" style="font-size: ${baseSize * 0.9}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                Erfasse und verwalte deine Arbeitszeiten
+              </p>
+            </div>
+            <button onclick="switchView('dashboard')" class="desktop-only px-4 py-2 rounded-xl font-semibold transition-all duration-300 hover-scale flex items-center gap-2" style="background: linear-gradient(135deg, ${config.secondary_action_color || defaultConfig.secondary_action_color}, ${config.secondary_action_color || defaultConfig.secondary_action_color}dd); color: white; font-size: ${baseSize * 0.8}px;">
+              🏠 Dashboard
+            </button>
+          </div>
+
+          <!-- Eingabeformular -->
+          <div class="gradient-border mb-8">
+            <div style="background: linear-gradient(135deg, ${config.surface_color || defaultConfig.surface_color} 0%, ${config.background_color || defaultConfig.background_color} 100%);">
+              <h2 class="font-bold mb-6 flex items-center gap-3" style="font-size: ${baseSize * 1.3}px; color: ${config.text_color || defaultConfig.text_color};">
+                ✨ Neue Arbeitszeit erfassen
+              </h2>
+              <form id="time-form" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mobile-gap-3">
+                  <div>
+                    <label for="date-input" class="block mb-2 font-semibold flex items-center gap-2 mobile-text-sm" style="font-size: ${baseSize * 0.9}px; color: ${config.text_color || defaultConfig.text_color};">
+                      📅 Datum
+                    </label>
+                    <input 
+                      type="date" 
+                      id="date-input" 
+                      required
+                      class="w-full px-3 py-3 border-2 rounded-xl time-input mobile-rounded"
+                      style="font-size: 16px; border-color: ${config.secondary_action_color || defaultConfig.secondary_action_color}40; background: ${config.surface_color || defaultConfig.surface_color}; color: ${config.text_color || defaultConfig.text_color};"
+                    >
+                  </div>
+                  <div>
+                    <label for="start-time-input" class="block mb-2 font-semibold flex items-center gap-2 mobile-text-sm" style="font-size: ${baseSize * 0.9}px; color: ${config.text_color || defaultConfig.text_color};">
+                      🕐 Von
+                    </label>
+                    <input 
+                      type="time" 
+                      id="start-time-input" 
+                      required
+                      class="w-full px-3 py-3 border-2 rounded-xl time-input mobile-rounded"
+                      style="font-size: 16px; border-color: ${config.secondary_action_color || defaultConfig.secondary_action_color}40; background: ${config.surface_color || defaultConfig.surface_color}; color: ${config.text_color || defaultConfig.text_color};"
+                    >
+                  </div>
+                  <div>
+                    <label for="end-time-input" class="block mb-2 font-semibold flex items-center gap-2 mobile-text-sm" style="font-size: ${baseSize * 0.9}px; color: ${config.text_color || defaultConfig.text_color};">
+                      🕕 Bis
+                    </label>
+                    <input 
+                      type="time" 
+                      id="end-time-input" 
+                      required
+                      class="w-full px-3 py-3 border-2 rounded-xl time-input mobile-rounded"
+                      style="font-size: 16px; border-color: ${config.secondary_action_color || defaultConfig.secondary_action_color}40; background: ${config.surface_color || defaultConfig.surface_color}; color: ${config.text_color || defaultConfig.text_color};"
+                    >
+                  </div>
+                </div>
+                
+                <div id="duration-display" class="text-center py-4 rounded-xl" style="background: linear-gradient(135deg, ${config.background_color || defaultConfig.background_color}40 0%, ${config.surface_color || defaultConfig.surface_color}20 100%);">
+                  <div class="flex items-center justify-center gap-3" style="color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                    <div class="w-3 h-3 bg-blue-400 rounded-full pulse-animation"></div>
+                    <span>Arbeitszeit wird automatisch berechnet</span>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label for="category-select" class="block mb-3 font-semibold flex items-center gap-2" style="font-size: ${baseSize}px; color: ${config.text_color || defaultConfig.text_color};">
+                      🏷️ Kategorie
+                    </label>
+                    <select 
+                      id="category-select" 
+                      required
+                      class="w-full px-4 py-4 border-2 rounded-xl time-input"
+                      style="font-size: ${baseSize}px; border-color: ${config.secondary_action_color || defaultConfig.secondary_action_color}40; background: ${config.surface_color || defaultConfig.surface_color}; color: ${config.text_color || defaultConfig.text_color};"
+                    >
+                      ${categories.map(cat => `
+                        <option value="${cat.id}">${cat.icon} ${cat.name}</option>
+                      `).join('')}
+                    </select>
+                  </div>
+                  <div>
+                    <label for="project-input" class="block mb-3 font-semibold flex items-center gap-2" style="font-size: ${baseSize}px; color: ${config.text_color || defaultConfig.text_color};">
+                      🎯 Projekt
+                    </label>
+                    <input 
+                      type="text" 
+                      id="project-input" 
+                      placeholder="Projektname eingeben..."
+                      class="w-full px-4 py-4 border-2 rounded-xl time-input"
+                      style="font-size: ${baseSize}px; border-color: ${config.secondary_action_color || defaultConfig.secondary_action_color}40; background: ${config.surface_color || defaultConfig.surface_color}; color: ${config.text_color || defaultConfig.text_color};"
+                    >
+                  </div>
+                </div>
+
+                <div>
+                  <label for="description-input" class="block mb-3 font-semibold flex items-center gap-2" style="font-size: ${baseSize}px; color: ${config.text_color || defaultConfig.text_color};">
+                    📝 Beschreibung
+                  </label>
+                  <textarea 
+                    id="description-input" 
+                    rows="4" 
+                    required
+                    placeholder="Was wurde getan? Beschreibe deine Tätigkeit..."
+                    class="w-full px-4 py-4 border-2 rounded-xl time-input"
+                    style="font-size: ${baseSize}px; border-color: ${config.secondary_action_color || defaultConfig.secondary_action_color}40; background: ${config.surface_color || defaultConfig.surface_color}; color: ${config.text_color || defaultConfig.text_color}; resize: vertical;"
+                  ></textarea>
+                </div>
+                
+                <button 
+                  type="submit" 
+                  id="submit-btn"
+                  class="w-full px-8 py-5 rounded-xl font-bold transition-all duration-300 hover-scale glow-animation flex items-center justify-center gap-3"
+                  style="font-size: ${baseSize * 1.2}px; background: linear-gradient(135deg, ${config.primary_action_color || defaultConfig.primary_action_color} 0%, ${config.primary_action_color || defaultConfig.primary_action_color}dd 100%); color: white; box-shadow: 0 8px 25px ${config.primary_action_color || defaultConfig.primary_action_color}40;"
+                >
+                  <span class="text-2xl">💾</span> Eintrag hinzufügen
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Wochenübersicht -->
+          <div class="gradient-border">
+            <div style="background: linear-gradient(135deg, ${config.surface_color || defaultConfig.surface_color} 0%, ${config.background_color || defaultConfig.background_color} 100%);">
+              <div class="flex justify-between items-center mb-6">
+                <h2 class="font-bold flex items-center gap-3" style="font-size: ${baseSize * 1.3}px; color: ${config.text_color || defaultConfig.text_color};">
+                  📊 Wochenübersicht
+                </h2>
+                <div class="flex gap-3">
+                  <button 
+                    id="import-btn"
+                    class="px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover-scale flex items-center gap-2"
+                    style="font-size: ${baseSize * 0.9}px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;"
+                  >
+                    📥 Excel importieren
+                  </button>
+                  <button 
+                    id="export-btn"
+                    class="px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover-scale flex items-center gap-2"
+                    style="font-size: ${baseSize * 0.9}px; background: linear-gradient(135deg, ${config.secondary_action_color || defaultConfig.secondary_action_color} 0%, ${config.secondary_action_color || defaultConfig.secondary_action_color}dd 100%); color: white;"
+                  >
+                    ${config.export_button_text || defaultConfig.export_button_text}
+                  </button>
+                </div>
+                
+                <!-- Versteckter File Input für Excel Import -->
+                <input type="file" id="excel-file-input" accept=".xlsx,.xls" style="display: none;">
+              </div>
+              
+              <div id="weeks-container" class="space-y-6">
+                ${weekStats.length === 0 ? `
+                  <div class="text-center py-16 rounded-2xl" style="background: linear-gradient(135deg, ${config.background_color || defaultConfig.background_color}40 0%, ${config.surface_color || defaultConfig.surface_color}20 100%);">
+                    <div class="text-8xl mb-6 bounce-animation">📋</div>
+                    <h3 class="font-bold mb-4" style="font-size: ${baseSize * 1.5}px; color: ${config.text_color || defaultConfig.text_color};">
+                      Noch keine Einträge vorhanden
+                    </h3>
+                    <p style="font-size: ${baseSize * 1.1}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                      Erfasse deine erste Arbeitszeit oben! ⬆️
+                    </p>
+                  </div>
+                ` : weekStats.map(week => {
+                  const weeklyTarget = SCHOOL_YEAR.weeklyHours;
+                  const balance = week.total - weeklyTarget;
+                  const balanceColor = balance > 0 ? '#10b981' : balance < 0 ? '#ef4444' : '#64748b';
+                  const balanceIcon = balance > 0 ? '🎯' : balance < 0 ? '⚠️' : '✅';
+                  const isEmptyWeek = week.isEmpty && week.total === 0;
+                  
+                  return `
+                    <div class="border-2 rounded-2xl p-6 hover-scale fade-in ${isEmptyWeek ? 'border-dashed' : ''}" style="border-color: ${isEmptyWeek ? '#ef4444' : config.secondary_action_color || defaultConfig.secondary_action_color}30; background: linear-gradient(135deg, ${isEmptyWeek ? '#ef444420' : config.surface_color || defaultConfig.surface_color}80 0%, ${config.background_color || defaultConfig.background_color}40 100%);">
+                      <div class="flex justify-between items-start mb-6">
+                        <div>
+                          <h3 class="font-bold flex items-center gap-3 mb-2" style="font-size: ${baseSize * 1.4}px; color: ${config.text_color || defaultConfig.text_color};">
+                            📅 KW${week.week} ${week.year}
+                            ${isEmptyWeek ? '<span class="text-2xl ml-2 bounce-animation">⚠️</span>' : ''}
+                          </h3>
+                          <div class="flex items-center gap-4">
+                            <span class="px-3 py-1 rounded-full text-sm font-semibold" style="background: ${config.primary_action_color || defaultConfig.primary_action_color}20; color: ${config.primary_action_color || defaultConfig.primary_action_color};">
+                              🎯 Ziel: ${weeklyTarget}h
+                            </span>
+                            <span class="px-3 py-1 rounded-full text-sm font-semibold" style="background: ${balanceColor}20; color: ${balanceColor};">
+                              ${balanceIcon} ${balance > 0 ? '+' : ''}${balance.toFixed(1)}h
+                            </span>
+                            ${isEmptyWeek ? `<span class="px-3 py-1 rounded-full text-sm font-semibold" style="background: #ef444420; color: #ef4444;">📭 Keine Einträge</span>` : ''}
+                          </div>
+                        </div>
+                        <div class="text-right">
+                          <p class="font-bold text-3xl mb-2" style="color: ${isEmptyWeek ? '#ef4444' : config.text_color || defaultConfig.text_color};">
+                            ${week.total.toFixed(1)}h
+                          </p>
+                          <p style="font-size: ${baseSize * 0.9}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                            ${week.entries.length} Einträge
+                          </p>
+                        </div>
+                      </div>
+                      
+                      ${isEmptyWeek ? `
+                        <div class="text-center py-8 rounded-xl" style="background: linear-gradient(135deg, #ef444410 0%, #ef444405 100%); border: 1px dashed #ef4444;">
+                          <div class="text-6xl mb-4 pulse-animation">😴</div>
+                          <h4 class="font-bold mb-2" style="font-size: ${baseSize * 1.2}px; color: #ef4444;">
+                            Keine Arbeitszeit erfasst
+                          </h4>
+                          <p style="font-size: ${baseSize}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                            In dieser Woche wurden ${Math.abs(balance).toFixed(1)} Stunden weniger gearbeitet als geplant.
+                          </p>
+                          <p class="mt-2 font-semibold" style="font-size: ${baseSize * 0.9}px; color: #ef4444;">
+                            💡 Tipp: Erfasse deine Arbeitszeiten regelmäßig für bessere Übersicht!
+                          </p>
+                        </div>
+                      ` : `
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          ${week.entries.map(entry => {
+                            const category = categories.find(c => c.id === entry.category) || categories[0];
+                            return `
+                              <div class="p-4 rounded-xl hover-scale" style="background: linear-gradient(135deg, ${config.surface_color || defaultConfig.surface_color} 0%, ${config.background_color || defaultConfig.background_color}40 100%); border: 1px solid ${category.color}40;">
+                                <div class="flex items-start justify-between mb-3">
+                                  <div class="category-badge" style="background: ${category.color}20; color: ${category.color};">
+                                    ${category.icon} ${category.name}
+                                  </div>
+                                  <div class="flex items-center gap-2">
+                                    <button 
+                                      class="delete-btn px-3 py-1 rounded-lg transition-all duration-300 hover-scale text-sm" 
+                                      data-id="${entry.id}"
+                                      style="background: ${config.secondary_action_color || defaultConfig.secondary_action_color}40; color: ${config.text_color || defaultConfig.text_color};"
+                                    >
+                                      🗑️
+                                    </button>
+                                  </div>
+                                </div>
+                                <p class="font-semibold mb-2 flex items-center gap-2" style="font-size: ${baseSize}px; color: ${config.text_color || defaultConfig.text_color};">
+                                  📅 ${new Date(entry.date).toLocaleDateString('de-DE')}
+                                  <span class="px-2 py-1 rounded-full text-xs font-bold" style="background: ${config.primary_action_color || defaultConfig.primary_action_color}20; color: ${config.primary_action_color || defaultConfig.primary_action_color};">
+                                    ${entry.duration.toFixed(2)}h
+                                  </span>
+                                </p>
+                                <p class="mb-3 flex items-center gap-2" style="font-size: ${baseSize * 0.9}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                                  🕐 ${entry.startTime} - ${entry.endTime}
+                                  ${entry.project ? `<span class="px-2 py-1 rounded-full text-xs" style="background: ${config.background_color || defaultConfig.background_color}40; color: ${config.text_color || defaultConfig.text_color};">📁 ${entry.project}</span>` : ''}
+                                </p>
+                                <p style="font-size: ${baseSize * 0.9}px; color: ${config.text_color || defaultConfig.text_color}; opacity: 0.9; line-height: 1.4;">
+                                  ${entry.description}
+                                </p>
+                              </div>
+                            `;
+                          }).join('')}
+                        </div>
+                      `}
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTodos() {
+      const config = window.elementSdk?.config || defaultConfig;
+      const customFont = config.font_family || defaultConfig.font_family;
+      const baseSize = config.font_size || defaultConfig.font_size;
+      const baseFontStack = 'system-ui, -apple-system, sans-serif';
+      
+      const pendingTodos = todoItems.filter(todo => !todo.completed);
+      const completedTodos = todoItems.filter(todo => todo.completed);
+
+      return `
+        <div class="slide-in-up">
+          <!-- Header -->
+          <div class="flex justify-between items-center mb-8">
+            <div>
+              <h1 class="font-bold flex items-center gap-3" style="font-size: ${baseSize * 2}px; color: ${config.text_color || defaultConfig.text_color}; font-family: ${customFont}, ${baseFontStack};">
+                ✅ To-Do Liste
+              </h1>
+              <p style="font-size: ${baseSize}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                Verwalte deine Aufgaben und bleibe produktiv
+              </p>
+            </div>
+            <div class="flex gap-3">
+              <button onclick="switchView('dashboard')" class="px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover-scale flex items-center gap-2" style="background: linear-gradient(135deg, ${config.secondary_action_color || defaultConfig.secondary_action_color}, ${config.secondary_action_color || defaultConfig.secondary_action_color}dd); color: white; font-size: ${baseSize * 0.9}px;">
+                🏠 Dashboard
+              </button>
+              <button id="export-todos-btn" class="px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover-scale flex items-center gap-2" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; font-size: ${baseSize * 0.9}px;">
+                📊 To-Dos exportieren
+              </button>
+            </div>
+          </div>
+
+          <!-- Eingabeformular -->
+          <div class="gradient-border mb-8">
+            <div style="background: linear-gradient(135deg, ${config.surface_color || defaultConfig.surface_color} 0%, ${config.background_color || defaultConfig.background_color} 100%);">
+              <h2 class="font-bold mb-6 flex items-center gap-3" style="font-size: ${baseSize * 1.3}px; color: ${config.text_color || defaultConfig.text_color};">
+                ➕ Neue Aufgabe hinzufügen
+              </h2>
+              <form id="todo-form" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div class="md:col-span-2">
+                    <label for="todo-title-input" class="block mb-3 font-semibold flex items-center gap-2" style="font-size: ${baseSize}px; color: ${config.text_color || defaultConfig.text_color};">
+                      📝 Aufgabe
+                    </label>
+                    <input 
+                      type="text" 
+                      id="todo-title-input" 
+                      required
+                      placeholder="Was muss erledigt werden?"
+                      class="w-full px-4 py-4 border-2 rounded-xl time-input"
+                      style="font-size: ${baseSize}px; border-color: ${config.secondary_action_color || defaultConfig.secondary_action_color}40; background: ${config.surface_color || defaultConfig.surface_color}; color: ${config.text_color || defaultConfig.text_color};"
+                    >
+                  </div>
+                  <div>
+                    <label for="todo-priority-select" class="block mb-3 font-semibold flex items-center gap-2" style="font-size: ${baseSize}px; color: ${config.text_color || defaultConfig.text_color};">
+                      🎯 Priorität
+                    </label>
+                    <select 
+                      id="todo-priority-select" 
+                      required
+                      class="w-full px-4 py-4 border-2 rounded-xl time-input"
+                      style="font-size: ${baseSize}px; border-color: ${config.secondary_action_color || defaultConfig.secondary_action_color}40; background: ${config.surface_color || defaultConfig.surface_color}; color: ${config.text_color || defaultConfig.text_color};"
+                    >
+                      ${todoPriorities.map(priority => `
+                        <option value="${priority.id}">${priority.icon} ${priority.name}</option>
+                      `).join('')}
+                    </select>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label for="todo-category-select" class="block mb-3 font-semibold flex items-center gap-2" style="font-size: ${baseSize}px; color: ${config.text_color || defaultConfig.text_color};">
+                      🏷️ Kategorie
+                    </label>
+                    <select 
+                      id="todo-category-select" 
+                      class="w-full px-4 py-4 border-2 rounded-xl time-input"
+                      style="font-size: ${baseSize}px; border-color: ${config.secondary_action_color || defaultConfig.secondary_action_color}40; background: ${config.surface_color || defaultConfig.surface_color}; color: ${config.text_color || defaultConfig.text_color};"
+                    >
+                      ${categories.map(cat => `
+                        <option value="${cat.id}">${cat.icon} ${cat.name}</option>
+                      `).join('')}
+                    </select>
+                  </div>
+                  <div>
+                    <label for="todo-due-date-input" class="block mb-3 font-semibold flex items-center gap-2" style="font-size: ${baseSize}px; color: ${config.text_color || defaultConfig.text_color};">
+                      📅 Fälligkeitsdatum (optional)
+                    </label>
+                    <input 
+                      type="date" 
+                      id="todo-due-date-input" 
+                      class="w-full px-4 py-4 border-2 rounded-xl time-input"
+                      style="font-size: ${baseSize}px; border-color: ${config.secondary_action_color || defaultConfig.secondary_action_color}40; background: ${config.surface_color || defaultConfig.surface_color}; color: ${config.text_color || defaultConfig.text_color};"
+                    >
+                  </div>
+                </div>
+
+                <div>
+                  <label for="todo-description-input" class="block mb-3 font-semibold flex items-center gap-2" style="font-size: ${baseSize}px; color: ${config.text_color || defaultConfig.text_color};">
+                    📄 Beschreibung (optional)
+                  </label>
+                  <textarea 
+                    id="todo-description-input" 
+                    rows="3" 
+                    placeholder="Zusätzliche Details zur Aufgabe..."
+                    class="w-full px-4 py-4 border-2 rounded-xl time-input"
+                    style="font-size: ${baseSize}px; border-color: ${config.secondary_action_color || defaultConfig.secondary_action_color}40; background: ${config.surface_color || defaultConfig.surface_color}; color: ${config.text_color || defaultConfig.text_color}; resize: vertical;"
+                  ></textarea>
+                </div>
+                
+                <button 
+                  type="submit" 
+                  id="todo-submit-btn"
+                  class="w-full px-8 py-5 rounded-xl font-bold transition-all duration-300 hover-scale glow-animation flex items-center justify-center gap-3"
+                  style="font-size: ${baseSize * 1.2}px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; box-shadow: 0 8px 25px #8b5cf640;"
+                >
+                  <span class="text-2xl">➕</span> To-Do hinzufügen
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <!-- To-Do Listen -->
+          <div class="space-y-8">
+            <!-- Offene To-Dos -->
+            <div class="gradient-border">
+              <div style="background: linear-gradient(135deg, ${config.surface_color || defaultConfig.surface_color} 0%, ${config.background_color || defaultConfig.background_color} 100%);">
+                <h2 class="font-bold mb-6 flex items-center gap-3" style="font-size: ${baseSize * 1.3}px; color: ${config.text_color || defaultConfig.text_color};">
+                  📋 Offene Aufgaben (${pendingTodos.length})
+                </h2>
+                
+                ${pendingTodos.length === 0 ? `
+                  <div class="text-center py-16 rounded-2xl" style="background: linear-gradient(135deg, ${config.background_color || defaultConfig.background_color}40 0%, ${config.surface_color || defaultConfig.surface_color}20 100%);">
+                    <div class="text-8xl mb-6 bounce-animation">🎉</div>
+                    <h3 class="font-bold mb-4" style="font-size: ${baseSize * 1.5}px; color: ${config.text_color || defaultConfig.text_color};">
+                      Alle Aufgaben erledigt!
+                    </h3>
+                    <p style="font-size: ${baseSize * 1.1}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                      Großartige Arbeit! Füge neue Aufgaben hinzu, um produktiv zu bleiben.
+                    </p>
+                  </div>
+                ` : `
+                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    ${pendingTodos.sort((a, b) => {
+                      const priorityOrder = { urgent: 4, high: 3, medium: 2, low: 1 };
+                      return priorityOrder[b.priority] - priorityOrder[a.priority];
+                    }).map(todo => {
+                      const priority = todoPriorities.find(p => p.id === todo.priority) || todoPriorities[0];
+                      const category = categories.find(c => c.id === todo.category) || categories[0];
+                      const isOverdue = todo.dueDate && new Date(todo.dueDate) < new Date();
+                      
+                      return `
+                        <div class="p-6 rounded-xl hover-scale ${isOverdue ? 'glow-animation' : ''}" style="background: linear-gradient(135deg, ${config.surface_color || defaultConfig.surface_color} 0%, ${config.background_color || defaultConfig.background_color}40 100%); border: 2px solid ${isOverdue ? '#ef4444' : priority.color}40;">
+                          <div class="flex items-start justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                              <div class="category-badge" style="background: ${priority.color}20; color: ${priority.color};">
+                                ${priority.icon} ${priority.name}
+                              </div>
+                              <div class="category-badge" style="background: ${category.color}20; color: ${category.color};">
+                                ${category.icon} ${category.name}
+                              </div>
+                              ${isOverdue ? `<div class="category-badge pulse-animation" style="background: #ef444420; color: #ef4444;">⚠️ Überfällig</div>` : ''}
+                            </div>
+                            <div class="flex items-center gap-2">
+                              <button 
+                                class="complete-todo-btn px-3 py-2 rounded-lg transition-all duration-300 hover-scale text-sm font-semibold" 
+                                data-id="${todo.id}"
+                                style="background: #10b98140; color: #10b981;"
+                              >
+                                ✅ Erledigt
+                              </button>
+                              <button 
+                                class="delete-todo-btn px-3 py-2 rounded-lg transition-all duration-300 hover-scale text-sm" 
+                                data-id="${todo.id}"
+                                style="background: ${config.secondary_action_color || defaultConfig.secondary_action_color}40; color: ${config.text_color || defaultConfig.text_color};"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+                          <h3 class="font-bold mb-3" style="font-size: ${baseSize * 1.2}px; color: ${config.text_color || defaultConfig.text_color};">
+                            ${todo.title}
+                          </h3>
+                          ${todo.description ? `
+                            <p class="mb-3" style="font-size: ${baseSize * 0.9}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color}; line-height: 1.5;">
+                              ${todo.description}
+                            </p>
+                          ` : ''}
+                          <div class="flex items-center justify-between text-sm">
+                            <span style="color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                              📅 Erstellt: ${new Date(todo.createdAt).toLocaleDateString('de-DE')}
+                            </span>
+                            ${todo.dueDate ? `
+                              <span class="px-2 py-1 rounded-full font-semibold" style="background: ${isOverdue ? '#ef444420' : '#f59e0b20'}; color: ${isOverdue ? '#ef4444' : '#f59e0b'};">
+                                🎯 Fällig: ${new Date(todo.dueDate).toLocaleDateString('de-DE')}
+                              </span>
+                            ` : ''}
+                          </div>
+                        </div>
+                      `;
+                    }).join('')}
+                  </div>
+                `}
+              </div>
+            </div>
+
+            <!-- Erledigte To-Dos -->
+            ${completedTodos.length > 0 ? `
+              <div class="gradient-border">
+                <div style="background: linear-gradient(135deg, ${config.surface_color || defaultConfig.surface_color} 0%, ${config.background_color || defaultConfig.background_color} 100%);">
+                  <h2 class="font-bold mb-6 flex items-center gap-3" style="font-size: ${baseSize * 1.3}px; color: ${config.text_color || defaultConfig.text_color};">
+                    ✅ Erledigte Aufgaben (${completedTodos.length})
+                  </h2>
+                  
+                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    ${completedTodos.slice(0, 6).map(todo => {
+                      const priority = todoPriorities.find(p => p.id === todo.priority) || todoPriorities[0];
+                      const category = categories.find(c => c.id === todo.category) || categories[0];
+                      
+                      return `
+                        <div class="p-6 rounded-xl hover-scale opacity-75" style="background: linear-gradient(135deg, #10b98120 0%, ${config.background_color || defaultConfig.background_color}40 100%); border: 2px solid #10b98140;">
+                          <div class="flex items-start justify-between mb-4">
+                            <div class="flex items-center gap-3">
+                              <div class="category-badge" style="background: ${priority.color}20; color: ${priority.color};">
+                                ${priority.icon} ${priority.name}
+                              </div>
+                              <div class="category-badge" style="background: ${category.color}20; color: ${category.color};">
+                                ${category.icon} ${category.name}
+                              </div>
+                              <div class="category-badge" style="background: #10b98120; color: #10b981;">
+                                ✅ Erledigt
+                              </div>
+                            </div>
+                            <button 
+                              class="delete-todo-btn px-3 py-2 rounded-lg transition-all duration-300 hover-scale text-sm" 
+                              data-id="${todo.id}"
+                              style="background: ${config.secondary_action_color || defaultConfig.secondary_action_color}40; color: ${config.text_color || defaultConfig.text_color};"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                          <h3 class="font-bold mb-3 line-through" style="font-size: ${baseSize * 1.2}px; color: ${config.text_color || defaultConfig.text_color};">
+                            ${todo.title}
+                          </h3>
+                          ${todo.description ? `
+                            <p class="mb-3 line-through" style="font-size: ${baseSize * 0.9}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color}; line-height: 1.5;">
+                              ${todo.description}
+                            </p>
+                          ` : ''}
+                          <div class="flex items-center justify-between text-sm">
+                            <span style="color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                              ✅ Erledigt: ${new Date(todo.completedAt).toLocaleDateString('de-DE')}
+                            </span>
+                          </div>
+                        </div>
+                      `;
+                    }).join('')}
+                  </div>
+                  
+                  ${completedTodos.length > 6 ? `
+                    <div class="text-center mt-6">
+                      <p style="color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                        ... und ${completedTodos.length - 6} weitere erledigte Aufgaben
+                      </p>
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderAnalytics() {
+      const config = window.elementSdk?.config || defaultConfig;
+      const customFont = config.font_family || defaultConfig.font_family;
+      const baseSize = config.font_size || defaultConfig.font_size;
+      const baseFontStack = 'system-ui, -apple-system, sans-serif';
+      
+      const weekStats = calculateWeekStats();
+      const categoryStats = {};
+      
+      // Schuljahr-Statistiken
+      const totalRequiredHours = calculateTotalRequiredHours();
+      const totalWorkedHours = timeEntries.filter(entry => {
+        const week = getWeekNumber(entry.date);
+        const year = getYear(entry.date);
+        return isInSchoolYear(week, year);
+      }).reduce((sum, entry) => sum + entry.duration, 0);
+      
+      const schoolYearProgress = Math.min((totalWorkedHours / totalRequiredHours) * 100, 100);
+      const remainingHours = Math.max(totalRequiredHours - totalWorkedHours, 0);
+      
+      timeEntries.forEach(entry => {
+        const category = entry.category || 'other';
+        if (!categoryStats[category]) categoryStats[category] = 0;
+        categoryStats[category] += entry.duration;
+      });
+
+      return `
+        <div class="slide-in-up">
+          <!-- Header -->
+          <div class="flex justify-between items-center mb-8">
+            <div>
+              <h1 class="font-bold flex items-center gap-3" style="font-size: ${baseSize * 2}px; color: ${config.text_color || defaultConfig.text_color}; font-family: ${customFont}, ${baseFontStack};">
+                📈 Analytics Dashboard
+              </h1>
+              <p style="font-size: ${baseSize}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                Detaillierte Auswertung deiner Arbeitszeiten
+              </p>
+            </div>
+            <button onclick="switchView('dashboard')" class="px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover-scale flex items-center gap-2" style="background: linear-gradient(135deg, ${config.secondary_action_color || defaultConfig.secondary_action_color}, ${config.secondary_action_color || defaultConfig.secondary_action_color}dd); color: white; font-size: ${baseSize * 0.9}px;">
+              🏠 Dashboard
+            </button>
+          </div>
+
+          <!-- Schuljahr Fortschritt -->
+          <div class="gradient-border mb-8">
+            <div style="background: linear-gradient(135deg, ${config.surface_color || defaultConfig.surface_color} 0%, ${config.background_color || defaultConfig.background_color} 100%);">
+              <h2 class="font-bold mb-6 flex items-center gap-3" style="font-size: ${baseSize * 1.3}px; color: ${config.text_color || defaultConfig.text_color};">
+                🎓 Schuljahr 2025/26 Fortschritt
+              </h2>
+              
+              <!-- Schuljahr Übersicht -->
+              <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="text-center p-6 rounded-xl" style="background: linear-gradient(135deg, ${config.primary_action_color || defaultConfig.primary_action_color}20 0%, ${config.primary_action_color || defaultConfig.primary_action_color}10 100%);">
+                  <div class="text-4xl mb-3">📚</div>
+                  <h3 class="font-bold mb-2" style="color: ${config.text_color || defaultConfig.text_color};">Gesamtstunden</h3>
+                  <p class="text-2xl font-bold" style="color: ${config.primary_action_color || defaultConfig.primary_action_color};">${totalRequiredHours}h</p>
+                  <p style="font-size: ${baseSize * 0.8}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">39 Arbeitswochen × 5h</p>
+                </div>
+                
+                <div class="text-center p-6 rounded-xl" style="background: linear-gradient(135deg, #10b98120 0%, #10b98110 100%);">
+                  <div class="text-4xl mb-3">✅</div>
+                  <h3 class="font-bold mb-2" style="color: ${config.text_color || defaultConfig.text_color};">Geleistet</h3>
+                  <p class="text-2xl font-bold" style="color: #10b981;">${totalWorkedHours.toFixed(1)}h</p>
+                  <p style="font-size: ${baseSize * 0.8}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">${schoolYearProgress.toFixed(1)}% erreicht</p>
+                </div>
+                
+                <div class="text-center p-6 rounded-xl" style="background: linear-gradient(135deg, ${remainingHours > 0 ? '#f59e0b20' : '#10b98120'} 0%, ${remainingHours > 0 ? '#f59e0b10' : '#10b98110'} 100%);">
+                  <div class="text-4xl mb-3">${remainingHours > 0 ? '⏰' : '🎯'}</div>
+                  <h3 class="font-bold mb-2" style="color: ${config.text_color || defaultConfig.text_color};">Verbleibend</h3>
+                  <p class="text-2xl font-bold" style="color: ${remainingHours > 0 ? '#f59e0b' : '#10b981'};">${remainingHours.toFixed(1)}h</p>
+                  <p style="font-size: ${baseSize * 0.8}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">${remainingHours > 0 ? 'Noch zu leisten' : 'Ziel erreicht!'}</p>
+                </div>
+                
+                <div class="text-center p-6 rounded-xl" style="background: linear-gradient(135deg, #8b5cf620 0%, #8b5cf610 100%);">
+                  <div class="text-4xl mb-3">🏖️</div>
+                  <h3 class="font-bold mb-2" style="color: ${config.text_color || defaultConfig.text_color};">Urlaubswochen</h3>
+                  <p class="text-2xl font-bold" style="color: #8b5cf6;">${SCHOOL_YEAR.vacationWeeks}</p>
+                  <p style="font-size: ${baseSize * 0.8}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">Bereits berücksichtigt</p>
+                </div>
+              </div>
+              
+              <!-- Fortschrittsbalken -->
+              <div class="mb-6">
+                <div class="flex justify-between items-center mb-3">
+                  <span class="font-semibold" style="color: ${config.text_color || defaultConfig.text_color};">Schuljahr-Fortschritt</span>
+                  <span class="font-bold" style="color: ${schoolYearProgress >= 100 ? '#10b981' : schoolYearProgress >= 75 ? '#f59e0b' : config.primary_action_color || defaultConfig.primary_action_color};">
+                    ${schoolYearProgress.toFixed(1)}%
+                  </span>
+                </div>
+                <div class="w-full bg-gray-700 rounded-full h-6 relative overflow-hidden">
+                  <div class="h-6 rounded-full transition-all duration-1000 relative" style="width: ${Math.min(schoolYearProgress, 100)}%; background: linear-gradient(90deg, ${schoolYearProgress >= 100 ? '#10b981' : schoolYearProgress >= 75 ? '#f59e0b' : config.primary_action_color || defaultConfig.primary_action_color}, ${schoolYearProgress >= 100 ? '#059669' : schoolYearProgress >= 75 ? '#d97706' : config.primary_action_color || defaultConfig.primary_action_color}dd);">
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-20 animate-pulse"></div>
+                  </div>
+                  <div class="absolute inset-0 flex items-center justify-center">
+                    <span class="text-sm font-bold text-white drop-shadow-lg">
+                      ${totalWorkedHours.toFixed(1)}h / ${totalRequiredHours}h
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Kategorie Auswertung -->
+          <div class="gradient-border mb-8">
+            <div style="background: linear-gradient(135deg, ${config.surface_color || defaultConfig.surface_color} 0%, ${config.background_color || defaultConfig.background_color} 100%);">
+              <h2 class="font-bold mb-6 flex items-center gap-3" style="font-size: ${baseSize * 1.3}px; color: ${config.text_color || defaultConfig.text_color};">
+                🏷️ Auswertung nach Kategorien
+              </h2>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                ${categories.map(category => {
+                  const hours = categoryStats[category.id] || 0;
+                  const percentage = timeEntries.length > 0 ? (hours / timeEntries.reduce((sum, entry) => sum + entry.duration, 0)) * 100 : 0;
+                  return `
+                    <div class="p-6 rounded-xl hover-scale stats-card" style="border: 2px solid ${category.color}40;">
+                      <div class="flex items-center gap-3 mb-4">
+                        <div class="text-3xl">${category.icon}</div>
+                        <div>
+                          <h3 class="font-bold" style="font-size: ${baseSize * 1.1}px; color: ${config.text_color || defaultConfig.text_color};">
+                            ${category.name}
+                          </h3>
+                          <p style="font-size: ${baseSize * 0.8}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                            ${percentage.toFixed(1)}% der Zeit
+                          </p>
+                        </div>
+                      </div>
+                      <div class="text-right">
+                        <p class="font-bold text-2xl" style="color: ${category.color};">
+                          ${hours.toFixed(1)}h
+                        </p>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          </div>
+
+          <!-- Wochentrend mit kumulativem Deputat -->
+          <div class="gradient-border">
+            <div style="background: linear-gradient(135deg, ${config.surface_color || defaultConfig.surface_color} 0%, ${config.background_color || defaultConfig.background_color} 100%);">
+              <h2 class="font-bold mb-6 flex items-center gap-3" style="font-size: ${baseSize * 1.3}px; color: ${config.text_color || defaultConfig.text_color};">
+                📊 Kumulatives Deputat (letzte 8 Wochen)
+              </h2>
+              <div class="space-y-4">
+                ${weekStats.slice(0, 8).map((week, index) => {
+                  const weeklyTarget = SCHOOL_YEAR.weeklyHours;
+                  
+                  // Kumulatives Deputat berechnen (von der ältesten zur neuesten Woche)
+                  const reversedIndex = weekStats.slice(0, 8).length - 1 - index;
+                  const cumulativeTarget = (reversedIndex + 1) * weeklyTarget;
+                  
+                  // Kumulative geleistete Stunden berechnen
+                  const cumulativeWorked = weekStats.slice(0, 8).slice(index).reduce((sum, w) => sum + w.total, 0);
+                  
+                  const cumulativeBalance = cumulativeWorked - cumulativeTarget;
+                  const percentage = (cumulativeWorked / cumulativeTarget) * 100;
+                  const isCurrentWeek = index === 0;
+                  
+                  return `
+                    <div class="flex items-center gap-4 p-4 rounded-xl hover-scale ${isCurrentWeek ? 'glow-animation' : ''}" style="background: linear-gradient(135deg, ${config.background_color || defaultConfig.background_color}40 0%, ${config.surface_color || defaultConfig.surface_color}20 100%); ${isCurrentWeek ? `border: 2px solid ${config.primary_action_color || defaultConfig.primary_action_color};` : ''}">
+                      <div class="w-20 text-center">
+                        <p class="font-bold" style="color: ${config.text_color || defaultConfig.text_color};">
+                          KW${week.week}
+                        </p>
+                        <p style="font-size: ${baseSize * 0.8}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                          ${week.year}
+                        </p>
+                      </div>
+                      <div class="flex-1">
+                        <div class="flex justify-between items-center mb-1">
+                          <span style="color: ${config.text_color || defaultConfig.text_color}; font-size: ${baseSize * 0.9}px;">
+                            Woche: ${week.total.toFixed(1)}h von ${weeklyTarget}h
+                          </span>
+                          <span class="font-bold" style="color: ${percentage >= 100 ? '#10b981' : percentage >= 90 ? '#f59e0b' : '#ef4444'};">
+                            ${percentage.toFixed(0)}%
+                          </span>
+                        </div>
+                        <div class="flex justify-between items-center mb-2">
+                          <span class="font-semibold" style="color: ${config.text_color || defaultConfig.text_color};">
+                            Kumulativ: ${cumulativeWorked.toFixed(1)}h von ${cumulativeTarget}h
+                          </span>
+                          <span class="px-2 py-1 rounded-full text-xs font-bold" style="background: ${cumulativeBalance >= 0 ? '#10b98120' : '#ef444420'}; color: ${cumulativeBalance >= 0 ? '#10b981' : '#ef4444'};">
+                            ${cumulativeBalance >= 0 ? '+' : ''}${cumulativeBalance.toFixed(1)}h
+                          </span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-3">
+                          <div class="h-3 rounded-full transition-all duration-500" style="width: ${Math.min(percentage, 100)}%; background: linear-gradient(90deg, ${percentage >= 100 ? '#10b981' : percentage >= 90 ? '#f59e0b' : '#ef4444'}, ${percentage >= 100 ? '#059669' : percentage >= 90 ? '#d97706' : '#dc2626'});"></div>
+                        </div>
+                      </div>
+                      <div class="text-right">
+                        <p class="font-bold" style="color: ${config.text_color || defaultConfig.text_color};">
+                          ${week.entries.length}
+                        </p>
+                        <p style="font-size: ${baseSize * 0.8}px; color: ${config.secondary_action_color || defaultConfig.secondary_action_color};">
+                          Einträge
+                        </p>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderApp() {
+      const config = window.elementSdk?.config || defaultConfig;
+      const app = document.getElementById('app');
+      
+      if (!app) {
+        console.error('App container nicht gefunden');
+        return;
+      }
+      
+      app.style.backgroundColor = config.background_color || defaultConfig.background_color;
+      app.style.color = config.text_color || defaultConfig.text_color;
+      
+      let content = '';
+      
+      switch(currentView) {
+        case 'dashboard':
+          content = renderDashboard();
+          break;
+        case 'timesheet':
+          content = renderTimesheet();
+          break;
+        case 'todos':
+          content = renderTodos();
+          break;
+        case 'analytics':
+          content = renderAnalytics();
+          break;
+        default:
+          content = renderDashboard();
+      }
+      
+      app.innerHTML = `
+        <div class="h-full overflow-auto scroll-container container-mobile" style="padding: 12px; padding-bottom: 80px;">
+          <div class="max-w-7xl mx-auto">
+            ${content}
+          </div>
+        </div>
+        
+        <!-- Desktop Floating Action Button -->
+        <button 
+          class="floating-action bounce-animation desktop-only" 
+          onclick="switchView('timesheet')"
+          style="background: linear-gradient(135deg, ${config.primary_action_color || defaultConfig.primary_action_color}, ${config.primary_action_color || defaultConfig.primary_action_color}dd); color: white;"
+          title="Neue Arbeitszeit erfassen"
+        >
+          ➕
+        </button>
+        
+        <!-- Mobile Navigation -->
+        <nav class="mobile-nav">
+          <div class="flex">
+            <a href="#" class="mobile-nav-item ${currentView === 'dashboard' ? 'active' : ''}" onclick="switchView('dashboard'); return false;" style="color: ${config.text_color || defaultConfig.text_color};">
+              <div class="mobile-nav-icon">🏠</div>
+              <div class="mobile-nav-text">Dashboard</div>
+            </a>
+            <a href="#" class="mobile-nav-item ${currentView === 'timesheet' ? 'active' : ''}" onclick="switchView('timesheet'); return false;" style="color: ${config.text_color || defaultConfig.text_color};">
+              <div class="mobile-nav-icon">📋</div>
+              <div class="mobile-nav-text">Zeit</div>
+            </a>
+            <a href="#" class="mobile-nav-item ${currentView === 'todos' ? 'active' : ''}" onclick="switchView('todos'); return false;" style="color: ${config.text_color || defaultConfig.text_color};">
+              <div class="mobile-nav-icon">✅</div>
+              <div class="mobile-nav-text">To-Do</div>
+            </a>
+            <a href="#" class="mobile-nav-item ${currentView === 'analytics' ? 'active' : ''}" onclick="switchView('analytics'); return false;" style="color: ${config.text_color || defaultConfig.text_color};">
+              <div class="mobile-nav-icon">📈</div>
+              <div class="mobile-nav-text">Analytics</div>
+            </a>
+          </div>
+        </nav>
+      `;
+
+      // Event Listeners hinzufügen
+      if (currentView === 'timesheet') {
+        const form = document.getElementById('time-form');
+        if (form) {
+          form.addEventListener('submit', handleSubmit);
+        }
+
+        const exportBtn = document.getElementById('export-btn');
+        if (exportBtn) {
+          exportBtn.addEventListener('click', exportToExcel);
+        }
+
+        const importBtn = document.getElementById('import-btn');
+        const fileInput = document.getElementById('excel-file-input');
+        if (importBtn && fileInput) {
+          importBtn.addEventListener('click', () => fileInput.click());
+          fileInput.addEventListener('change', handleExcelImport);
+        }
+
+        document.querySelectorAll('.delete-btn').forEach(btn => {
+          btn.addEventListener('click', handleDelete);
+        });
+
+        const startTimeInput = document.getElementById('start-time-input');
+        const endTimeInput = document.getElementById('end-time-input');
+        
+        if (startTimeInput && endTimeInput) {
+          startTimeInput.addEventListener('input', updateDurationDisplay);
+          endTimeInput.addEventListener('input', updateDurationDisplay);
+        }
+
+        // Aktuelles Datum setzen
+        const dateInput = document.getElementById('date-input');
+        if (dateInput && !dateInput.value) {
+          dateInput.value = new Date().toISOString().split('T')[0];
+        }
+      }
+
+      // To-Do Event Listeners
+      if (currentView === 'todos') {
+        const todoForm = document.getElementById('todo-form');
+        if (todoForm) {
+          todoForm.addEventListener('submit', handleTodoSubmit);
+        }
+
+        const exportTodosBtn = document.getElementById('export-todos-btn');
+        if (exportTodosBtn) {
+          exportTodosBtn.addEventListener('click', exportTodosToExcel);
+        }
+
+        document.querySelectorAll('.complete-todo-btn').forEach(btn => {
+          btn.addEventListener('click', handleTodoComplete);
+        });
+
+        document.querySelectorAll('.delete-todo-btn').forEach(btn => {
+          btn.addEventListener('click', handleTodoDelete);
+        });
+      }
+    }
+
+    function switchView(view) {
+      currentView = view;
+      renderApp();
+    }
+
+    // Global verfügbar machen
+    window.switchView = switchView;
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+
+      const submitBtn = document.getElementById('submit-btn');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="bounce-animation">⏳</span> Wird gespeichert...';
+
+      try {
+        const date = document.getElementById('date-input').value;
+        const startTime = document.getElementById('start-time-input').value;
+        const endTime = document.getElementById('end-time-input').value;
+        const description = document.getElementById('description-input').value;
+        const category = document.getElementById('category-select').value;
+        const project = document.getElementById('project-input').value;
+        const duration = calculateDuration(startTime, endTime);
+
+        if (duration <= 0) {
+          showToast('Bitte geben Sie gültige Uhrzeiten ein.', 'error');
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalText;
+          return;
+        }
+
+        // Neuen Eintrag erstellen
+        const newEntry = {
+          id: generateId(),
+          date: date,
+          startTime: startTime,
+          endTime: endTime,
+          duration: duration,
+          description: description,
+          category: category,
+          project: project,
+          createdAt: new Date().toISOString()
+        };
+
+        // Zu Array hinzufügen und speichern
+        timeEntries.unshift(newEntry);
+        saveToLocalStorage();
+
+        // Formular zurücksetzen
+        document.getElementById('time-form').reset();
+        document.getElementById('date-input').value = new Date().toISOString().split('T')[0];
+        document.getElementById('duration-display').innerHTML = `
+          <div class="flex items-center justify-center gap-3" style="color: #64748b;">
+            <div class="w-3 h-3 bg-blue-400 rounded-full pulse-animation"></div>
+            <span>Arbeitszeit wird automatisch berechnet</span>
+          </div>
+        `;
+
+        // UI aktualisieren
+        renderApp();
+        
+        showToast('🎉 Arbeitszeit erfolgreich gespeichert! Großartige Arbeit!', 'success');
+      } catch (error) {
+        console.error('Unerwarteter Fehler:', error);
+        showToast('Unerwarteter Fehler beim Speichern. Bitte versuchen Sie es erneut.', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
+    }
+
+    async function handleDelete(e) {
+      const id = e.target.dataset.id;
+      const entryIndex = timeEntries.findIndex(entry => entry.id === id);
+      
+      if (entryIndex === -1) {
+        showToast('Eintrag nicht gefunden.', 'error');
+        return;
+      }
+
+      const originalText = e.target.innerHTML;
+      e.target.disabled = true;
+      e.target.innerHTML = '⏳';
+
+      try {
+        // Eintrag aus Array entfernen
+        timeEntries.splice(entryIndex, 1);
+        saveToLocalStorage();
+        
+        // UI aktualisieren
+        renderApp();
+        
+        showToast('🗑️ Eintrag erfolgreich gelöscht!', 'success');
+      } catch (error) {
+        console.error('Unerwarteter Löschfehler:', error);
+        showToast('Unerwarteter Fehler beim Löschen. Bitte versuchen Sie es erneut.', 'error');
+        e.target.disabled = false;
+        e.target.innerHTML = originalText;
+      }
+    }
+
+    async function handleExcelImport(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const importBtn = document.getElementById('import-btn');
+      const originalText = importBtn.innerHTML;
+      importBtn.disabled = true;
+      importBtn.innerHTML = '<span class="bounce-animation">⏳</span> Importiere...';
+
+      try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        if (jsonData.length < 2) {
+          showToast('Die Excel-Datei enthält keine gültigen Daten.', 'error');
+          return;
+        }
+
+        const headers = jsonData[0];
+        const rows = jsonData.slice(1);
+        
+        // Erwartete Spalten (flexibel)
+        const columnMap = {};
+        headers.forEach((header, index) => {
+          const normalizedHeader = header.toString().toLowerCase().trim();
+          if (normalizedHeader.includes('datum')) columnMap.date = index;
+          else if (normalizedHeader.includes('von') || normalizedHeader.includes('start')) columnMap.startTime = index;
+          else if (normalizedHeader.includes('bis') || normalizedHeader.includes('end')) columnMap.endTime = index;
+          else if (normalizedHeader.includes('dauer')) columnMap.duration = index;
+          else if (normalizedHeader.includes('kategorie') || normalizedHeader.includes('category')) columnMap.category = index;
+          else if (normalizedHeader.includes('projekt') || normalizedHeader.includes('project')) columnMap.project = index;
+          else if (normalizedHeader.includes('beschreibung') || normalizedHeader.includes('description')) columnMap.description = index;
+        });
+
+        let importedCount = 0;
+        let skippedCount = 0;
+        const newEntries = [];
+
+        for (const row of rows) {
+          try {
+            // Überspringe leere Zeilen
+            if (!row || row.every(cell => !cell || cell.toString().trim() === '')) {
+              continue;
+            }
+
+            const dateValue = row[columnMap.date];
+            const startTimeValue = row[columnMap.startTime];
+            const endTimeValue = row[columnMap.endTime];
+            const descriptionValue = row[columnMap.description];
+
+            // Validierung der Pflichtfelder
+            if (!dateValue || !startTimeValue || !endTimeValue || !descriptionValue) {
+              skippedCount++;
+              continue;
+            }
+
+            // Datum parsen (verschiedene Formate unterstützen)
+            let parsedDate;
+            if (typeof dateValue === 'number') {
+              // Excel Datum (Seriennummer)
+              parsedDate = new Date((dateValue - 25569) * 86400 * 1000);
+            } else {
+              // String Datum
+              parsedDate = new Date(dateValue);
+            }
+
+            if (isNaN(parsedDate.getTime())) {
+              skippedCount++;
+              continue;
+            }
+
+            // Zeit formatieren
+            const formatTime = (timeValue) => {
+              if (typeof timeValue === 'number') {
+                // Excel Zeit (Dezimalwert)
+                const hours = Math.floor(timeValue * 24);
+                const minutes = Math.floor((timeValue * 24 * 60) % 60);
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+              } else {
+                // String Zeit
+                const timeStr = timeValue.toString().trim();
+                if (timeStr.match(/^\d{1,2}:\d{2}$/)) {
+                  return timeStr;
+                }
+                return null;
+              }
+            };
+
+            const startTime = formatTime(startTimeValue);
+            const endTime = formatTime(endTimeValue);
+
+            if (!startTime || !endTime) {
+              skippedCount++;
+              continue;
+            }
+
+            // Dauer berechnen oder aus Datei übernehmen
+            let duration;
+            if (columnMap.duration !== undefined && row[columnMap.duration]) {
+              duration = parseFloat(row[columnMap.duration]);
+            } else {
+              duration = calculateDuration(startTime, endTime);
+            }
+
+            if (duration <= 0) {
+              skippedCount++;
+              continue;
+            }
+
+            // Kategorie zuordnen
+            let category = 'other';
+            if (columnMap.category !== undefined && row[columnMap.category]) {
+              const categoryName = row[columnMap.category].toString().toLowerCase();
+              const foundCategory = categories.find(cat => 
+                cat.name.toLowerCase().includes(categoryName) || 
+                categoryName.includes(cat.name.toLowerCase())
+              );
+              if (foundCategory) {
+                category = foundCategory.id;
+              }
+            }
+
+            // Projekt
+            const project = columnMap.project !== undefined ? (row[columnMap.project] || '').toString().trim() : '';
+
+            // Neuen Eintrag erstellen
+            const newEntry = {
+              id: generateId(),
+              date: parsedDate.toISOString().split('T')[0],
+              startTime: startTime,
+              endTime: endTime,
+              duration: duration,
+              description: descriptionValue.toString().trim(),
+              category: category,
+              project: project,
+              createdAt: new Date().toISOString()
+            };
+
+            newEntries.push(newEntry);
+            importedCount++;
+
+          } catch (error) {
+            console.error('Fehler beim Verarbeiten der Zeile:', error);
+            skippedCount++;
+          }
+        }
+
+        if (importedCount > 0) {
+          // Neue Einträge zu bestehenden hinzufügen
+          timeEntries.unshift(...newEntries);
+          saveToLocalStorage();
+          renderApp();
+          
+          showToast(`🎉 ${importedCount} Einträge erfolgreich importiert! ${skippedCount > 0 ? `(${skippedCount} übersprungen)` : ''}`, 'success');
+        } else {
+          showToast('Keine gültigen Einträge zum Importieren gefunden.', 'error');
+        }
+
+      } catch (error) {
+        console.error('Excel Import Fehler:', error);
+        showToast('Fehler beim Importieren der Excel-Datei. Bitte überprüfen Sie das Format.', 'error');
+      } finally {
+        importBtn.disabled = false;
+        importBtn.innerHTML = originalText;
+        // File Input zurücksetzen
+        e.target.value = '';
+      }
+    }
+
+    async function handleTodoSubmit(e) {
+      e.preventDefault();
+
+      const submitBtn = document.getElementById('todo-submit-btn');
+      const originalText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="bounce-animation">⏳</span> Wird gespeichert...';
+
+      try {
+        const title = document.getElementById('todo-title-input').value;
+        const priority = document.getElementById('todo-priority-select').value;
+        const category = document.getElementById('todo-category-select').value;
+        const dueDate = document.getElementById('todo-due-date-input').value;
+        const description = document.getElementById('todo-description-input').value;
+
+        // Neues To-Do erstellen
+        const newTodo = {
+          id: generateId(),
+          title: title,
+          priority: priority,
+          category: category,
+          dueDate: dueDate || null,
+          description: description || '',
+          completed: false,
+          createdAt: new Date().toISOString(),
+          completedAt: null
+        };
+
+        // Zu Array hinzufügen und speichern
+        todoItems.unshift(newTodo);
+        saveToLocalStorage();
+
+        // Formular zurücksetzen
+        document.getElementById('todo-form').reset();
+
+        // UI aktualisieren
+        renderApp();
+        
+        showToast('✅ To-Do erfolgreich hinzugefügt! Bleib produktiv!', 'success');
+      } catch (error) {
+        console.error('Unerwarteter Fehler:', error);
+        showToast('Unerwarteter Fehler beim Speichern. Bitte versuchen Sie es erneut.', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
+    }
+
+    async function handleTodoComplete(e) {
+      const id = e.target.dataset.id;
+      const todoIndex = todoItems.findIndex(todo => todo.id === id);
+      
+      if (todoIndex === -1) {
+        showToast('To-Do nicht gefunden.', 'error');
+        return;
+      }
+
+      const originalText = e.target.innerHTML;
+      e.target.disabled = true;
+      e.target.innerHTML = '⏳';
+
+      try {
+        // To-Do als erledigt markieren
+        todoItems[todoIndex].completed = true;
+        todoItems[todoIndex].completedAt = new Date().toISOString();
+        saveToLocalStorage();
+        
+        // UI aktualisieren
+        renderApp();
+        
+        showToast('🎉 Aufgabe erledigt! Großartige Arbeit!', 'success');
+      } catch (error) {
+        console.error('Unerwarteter Fehler:', error);
+        showToast('Unerwarteter Fehler beim Aktualisieren. Bitte versuchen Sie es erneut.', 'error');
+        e.target.disabled = false;
+        e.target.innerHTML = originalText;
+      }
+    }
+
+    async function handleTodoDelete(e) {
+      const id = e.target.dataset.id;
+      const todoIndex = todoItems.findIndex(todo => todo.id === id);
+      
+      if (todoIndex === -1) {
+        showToast('To-Do nicht gefunden.', 'error');
+        return;
+      }
+
+      const originalText = e.target.innerHTML;
+      e.target.disabled = true;
+      e.target.innerHTML = '⏳';
+
+      try {
+        // To-Do aus Array entfernen
+        todoItems.splice(todoIndex, 1);
+        saveToLocalStorage();
+        
+        // UI aktualisieren
+        renderApp();
+        
+        showToast('🗑️ To-Do erfolgreich gelöscht!', 'success');
+      } catch (error) {
+        console.error('Unerwarteter Löschfehler:', error);
+        showToast('Unerwarteter Fehler beim Löschen. Bitte versuchen Sie es erneut.', 'error');
+        e.target.disabled = false;
+        e.target.innerHTML = originalText;
+      }
+    }
+
+    function exportTodosToExcel() {
+      try {
+        const data = [];
+        data.push(['Status', 'Aufgabe', 'Priorität', 'Kategorie', 'Fälligkeitsdatum', 'Beschreibung', 'Erstellt am', 'Erledigt am']);
+
+        todoItems.forEach(todo => {
+          const priority = todoPriorities.find(p => p.id === todo.priority) || todoPriorities[0];
+          const category = categories.find(c => c.id === todo.category) || categories[0];
+          
+          data.push([
+            todo.completed ? 'Erledigt' : 'Offen',
+            todo.title,
+            priority.name,
+            category.name,
+            todo.dueDate ? new Date(todo.dueDate).toLocaleDateString('de-DE') : '',
+            todo.description || '',
+            new Date(todo.createdAt).toLocaleDateString('de-DE'),
+            todo.completedAt ? new Date(todo.completedAt).toLocaleDateString('de-DE') : ''
+          ]);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        
+        ws['!cols'] = [
+          { wch: 10 }, // Status
+          { wch: 40 }, // Aufgabe
+          { wch: 12 }, // Priorität
+          { wch: 20 }, // Kategorie
+          { wch: 15 }, // Fälligkeitsdatum
+          { wch: 50 }, // Beschreibung
+          { wch: 12 }, // Erstellt am
+          { wch: 12 }  // Erledigt am
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'ToDo_Liste_ZSL');
+
+        const filename = `ToDo_Liste_ZSL_${new Date().toISOString().split('T')[0]}.xlsx`;
+        
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        
+        setTimeout(() => {
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        }, 100);
+        
+        showToast('📊 To-Do Liste wird heruntergeladen! Perfekt für die Übersicht!', 'success');
+      } catch (error) {
+        console.error('Excel Export Fehler:', error);
+        showToast('Fehler beim Excel-Export. Bitte versuchen Sie es erneut.', 'error');
+      }
+    }
+
+    function exportToExcel() {
+      const config = window.elementSdk?.config || defaultConfig;
+      const weekStats = calculateWeekStats();
+      const weeklyTarget = SCHOOL_YEAR.weeklyHours;
+
+      const data = [];
+      data.push(['Kalenderwoche', 'Jahr', 'Datum', 'Von', 'Bis', 'Dauer (h)', 'Kategorie', 'Projekt', 'Beschreibung', 'Wochensumme', 'Wochenziel', 'Bilanz']);
+
+      weekStats.forEach(week => {
+        const weekBalance = week.total - weeklyTarget;
+
+        week.entries.forEach((entry, index) => {
+          const category = categories.find(c => c.id === entry.category) || categories[0];
+          
+          data.push([
+            index === 0 ? `KW${week.week}` : '',
+            index === 0 ? week.year : '',
+            new Date(entry.date).toLocaleDateString('de-DE'),
+            entry.startTime,
+            entry.endTime,
+            entry.duration.toFixed(2),
+            category.name,
+            entry.project || '',
+            entry.description,
+            index === 0 ? week.total.toFixed(2) : '',
+            index === 0 ? weeklyTarget.toFixed(1) : '',
+            index === 0 ? weekBalance.toFixed(2) : ''
+          ]);
+        });
+      });
+
+      try {
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        
+        ws['!cols'] = [
+          { wch: 12 }, // Kalenderwoche
+          { wch: 6 },  // Jahr
+          { wch: 12 }, // Datum
+          { wch: 8 },  // Von
+          { wch: 8 },  // Bis
+          { wch: 10 }, // Dauer
+          { wch: 25 }, // Kategorie
+          { wch: 20 }, // Projekt
+          { wch: 50 }, // Beschreibung
+          { wch: 12 }, // Wochensumme
+          { wch: 12 }, // Wochenziel
+          { wch: 10 }  // Bilanz
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Zeiterfassung_ZSL');
+
+        const filename = `Zeiterfassung_ZSL_${new Date().toISOString().split('T')[0]}.xlsx`;
+        
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        
+        setTimeout(() => {
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        }, 100);
+        
+        showToast('📊 Excel-Report wird heruntergeladen! Perfekt für die Analyse!', 'success');
+      } catch (error) {
+        console.error('Excel Export Fehler:', error);
+        showToast('Fehler beim Excel-Export. Bitte versuchen Sie es erneut.', 'error');
+      }
+    }
+
+    // Element SDK Integration
+    async function onConfigChange(config) {
+      renderApp();
+    }
+
+    function mapToCapabilities(config) {
+      return {
+        recolorables: [
+          {
+            get: () => config.background_color || defaultConfig.background_color,
+            set: (value) => {
+              if (window.elementSdk) {
+                window.elementSdk.setConfig({ background_color: value });
+              }
+            }
+          },
+          {
+            get: () => config.surface_color || defaultConfig.surface_color,
+            set: (value) => {
+              if (window.elementSdk) {
+                window.elementSdk.setConfig({ surface_color: value });
+              }
+            }
+          },
+          {
+            get: () => config.text_color || defaultConfig.text_color,
+            set: (value) => {
+              if (window.elementSdk) {
+                window.elementSdk.setConfig({ text_color: value });
+              }
+            }
+          },
+          {
+            get: () => config.primary_action_color || defaultConfig.primary_action_color,
+            set: (value) => {
+              if (window.elementSdk) {
+                window.elementSdk.setConfig({ primary_action_color: value });
+              }
+            }
+          },
+          {
+            get: () => config.secondary_action_color || defaultConfig.secondary_action_color,
+            set: (value) => {
+              if (window.elementSdk) {
+                window.elementSdk.setConfig({ secondary_action_color: value });
+              }
+            }
+          }
+        ],
+        borderables: [],
+        fontEditable: {
+          get: () => config.font_family || defaultConfig.font_family,
+          set: (value) => {
+            if (window.elementSdk) {
+              window.elementSdk.setConfig({ font_family: value });
+            }
+          }
+        },
+        fontSizeable: {
+          get: () => config.font_size || defaultConfig.font_size,
+          set: (value) => {
+            if (window.elementSdk) {
+              window.elementSdk.setConfig({ font_size: value });
+            }
+          }
+        }
+      };
+    }
+
+    function mapToEditPanelValues(config) {
+      return new Map([
+        ["app_title", config.app_title || defaultConfig.app_title],
+        ["company_name", config.company_name || defaultConfig.company_name],
+        ["weekly_target", config.weekly_target || defaultConfig.weekly_target],
+        ["export_button_text", config.export_button_text || defaultConfig.export_button_text]
+      ]);
+    }
+
+    function init() {
+      console.log('Initialisierung gestartet...');
+      
+      // Service Worker registrieren (PWA)
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./service-worker.js')
+            .then(registration => {
+              console.log('✅ Service Worker registriert:', registration.scope);
+            })
+            .catch(error => {
+              console.log('❌ Service Worker Registrierung fehlgeschlagen:', error);
+            });
+        });
+      }
+      
+      // Element SDK initialisieren
+      if (window.elementSdk) {
+        window.elementSdk.init({
+          defaultConfig,
+          onConfigChange,
+          mapToCapabilities,
+          mapToEditPanelValues
+        });
+      }
+      
+      // Daten aus localStorage laden
+      loadFromLocalStorage();
+      
+      // App rendern
+      renderApp();
+      
+      console.log('Zeiterfassung ZSL erfolgreich gestartet!');
+      console.log('Geladene Einträge:', timeEntries.length);
+    }
+
+    // App sofort initialisieren
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'997dbd7d552501f0',t:'MTc2MjAyNDcyOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
