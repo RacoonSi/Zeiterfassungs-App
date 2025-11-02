@@ -1283,7 +1283,7 @@
                     class="px-6 py-3 rounded-xl font-semibold transition-all duration-300 hover-scale flex items-center gap-2"
                     style="font-size: ${baseSize * 0.9}px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;"
                   >
-                    📥 Excel importieren
+                    📥 CSV/Excel importieren
                   </button>
                   <button 
                     id="export-btn"
@@ -1294,8 +1294,8 @@
                   </button>
                 </div>
                 
-                <!-- Versteckter File Input für Excel Import -->
-                <input type="file" id="excel-file-input" accept=".xlsx,.xls" style="display: none;">
+                <!-- Versteckter File Input für Import -->
+                <input type="file" id="excel-file-input" accept=".csv,.xlsx,.xls" style="display: none;">
               </div>
               
               <div id="weeks-container" class="space-y-6">
@@ -2140,32 +2140,96 @@
       importBtn.innerHTML = '<span class="bounce-animation">⏳</span> Importiere...';
 
       try {
-        const data = await file.arrayBuffer();
-        const workbook = XLSX.read(data, { type: 'array' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-        if (jsonData.length < 2) {
-          showToast('Die Excel-Datei enthält keine gültigen Daten.', 'error');
+        const fileName = file.name.toLowerCase();
+        let rows = [];
+        
+        // CSV Import
+        if (fileName.endsWith('.csv')) {
+          console.log('📄 CSV-Import gestartet...');
+          const text = await file.text();
+          
+          // CSV parsen (einfacher Parser)
+          const lines = text.split('\n').map(line => line.trim()).filter(line => line);
+          
+          if (lines.length < 2) {
+            showToast('Die CSV-Datei enthält keine gültigen Daten.', 'error');
+            return;
+          }
+          
+          // Header und Zeilen trennen
+          const headers = lines[0].split(/[;,\t]/).map(h => h.trim().replace(/^["']|["']$/g, ''));
+          console.log('CSV Headers:', headers);
+          
+          // Daten-Zeilen parsen
+          for (let i = 1; i < lines.length; i++) {
+            const line = lines[i];
+            // Split mit Unterstützung für quoted values
+            const values = line.match(/(".*?"|[^;,\t]+)(?=[;,\t]|$)/g) || [];
+            const cleanValues = values.map(v => v.trim().replace(/^["']|["']$/g, ''));
+            
+            if (cleanValues.length > 0 && cleanValues.some(v => v)) {
+              const row = {};
+              headers.forEach((header, idx) => {
+                row[header] = cleanValues[idx] || '';
+              });
+              rows.push(row);
+            }
+          }
+          
+          console.log(`✅ ${rows.length} CSV-Zeilen geparst`);
+          
+        } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+          // Excel Import
+          console.log('📊 Excel-Import gestartet...');
+          const data = await file.arrayBuffer();
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+          
+          rows = jsonData;
+          console.log(`✅ ${rows.length} Excel-Zeilen geparst`);
+          
+        } else {
+          showToast('Ungültiges Dateiformat. Bitte .csv, .xlsx oder .xls verwenden.', 'error');
           return;
         }
 
-        const headers = jsonData[0];
-        const rows = jsonData.slice(1);
-        
-        // Erwartete Spalten (flexibel)
-        const columnMap = {};
-        headers.forEach((header, index) => {
-          const normalizedHeader = header.toString().toLowerCase().trim();
-          if (normalizedHeader.includes('datum')) columnMap.date = index;
-          else if (normalizedHeader.includes('von') || normalizedHeader.includes('start')) columnMap.startTime = index;
-          else if (normalizedHeader.includes('bis') || normalizedHeader.includes('end')) columnMap.endTime = index;
-          else if (normalizedHeader.includes('dauer')) columnMap.duration = index;
-          else if (normalizedHeader.includes('kategorie') || normalizedHeader.includes('category')) columnMap.category = index;
-          else if (normalizedHeader.includes('projekt') || normalizedHeader.includes('project')) columnMap.project = index;
-          else if (normalizedHeader.includes('beschreibung') || normalizedHeader.includes('description')) columnMap.description = index;
-        });
+        if (rows.length === 0) {
+          showToast('Die Datei enthält keine gültigen Daten.', 'error');
+          return;
+        }
+
+        // Spalten identifizieren (case-insensitive)
+        const findColumn = (row, keywords) => {
+          const keys = Object.keys(row);
+          for (const key of keys) {
+            const keyLower = key.toLowerCase();
+            for (const keyword of keywords) {
+              if (keyLower.includes(keyword)) {
+                return key;
+              }
+            }
+          }
+          return null;
+        };
+
+        const firstRow = rows[0];
+        const colDate = findColumn(firstRow, ['datum', 'date']);
+        const colStart = findColumn(firstRow, ['von', 'start', 'beginn']);
+        const colEnd = findColumn(firstRow, ['bis', 'end', 'ende']);
+        const colDesc = findColumn(firstRow, ['beschreibung', 'description', 'desc', 'bemerkung']);
+        const colCategory = findColumn(firstRow, ['kategorie', 'category', 'cat']);
+        const colProject = findColumn(firstRow, ['projekt', 'project']);
+        const colDuration = findColumn(firstRow, ['dauer', 'duration', 'stunden', 'hours']);
+
+        console.log('Gefundene Spalten:', { colDate, colStart, colEnd, colDesc, colCategory, colProject });
+
+        if (!colDate || !colStart || !colEnd || !colDesc) {
+          showToast('Pflichtfelder nicht gefunden: Datum, Von, Bis, Beschreibung', 'error');
+          console.error('Fehlende Spalten. Verfügbare Spalten:', Object.keys(firstRow));
+          return;
+        }
 
         let importedCount = 0;
         let skippedCount = 0;
@@ -2173,94 +2237,147 @@
 
         for (const row of rows) {
           try {
-            // Überspringe leere Zeilen
-            if (!row || row.every(cell => !cell || cell.toString().trim() === '')) {
+            // Überspringe komplett leere Zeilen
+            const values = Object.values(row);
+            if (values.every(v => !v || v.toString().trim() === '')) {
               continue;
             }
 
-            const dateValue = row[columnMap.date];
-            const startTimeValue = row[columnMap.startTime];
-            const endTimeValue = row[columnMap.endTime];
-            const descriptionValue = row[columnMap.description];
+            const dateValue = row[colDate];
+            const startTimeValue = row[colStart];
+            const endTimeValue = row[colEnd];
+            const descriptionValue = row[colDesc];
 
-            // Validierung der Pflichtfelder
+            // Validierung
             if (!dateValue || !startTimeValue || !endTimeValue || !descriptionValue) {
+              console.log('Zeile übersprungen (fehlende Werte):', row);
               skippedCount++;
               continue;
             }
 
-            // Datum parsen (verschiedene Formate unterstützen)
+            // Datum parsen
             let parsedDate;
-            if (typeof dateValue === 'number') {
-              // Excel Datum (Seriennummer)
+            const dateStr = dateValue.toString().trim();
+            
+            // Verschiedene Datumsformate versuchen
+            if (dateStr.match(/^\d{2}\.\d{2}\.\d{4}$/)) {
+              // DD.MM.YYYY
+              const [day, month, year] = dateStr.split('.');
+              parsedDate = new Date(year, month - 1, day);
+            } else if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+              // YYYY-MM-DD
+              parsedDate = new Date(dateStr);
+            } else if (dateStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+              // DD/MM/YYYY
+              const [day, month, year] = dateStr.split('/');
+              parsedDate = new Date(year, month - 1, day);
+            } else if (!isNaN(dateValue)) {
+              // Excel Seriennummer
               parsedDate = new Date((dateValue - 25569) * 86400 * 1000);
             } else {
-              // String Datum
-              parsedDate = new Date(dateValue);
+              parsedDate = new Date(dateStr);
             }
 
             if (isNaN(parsedDate.getTime())) {
+              console.log('Ungültiges Datum:', dateStr);
               skippedCount++;
               continue;
             }
 
             // Zeit formatieren
             const formatTime = (timeValue) => {
-              if (typeof timeValue === 'number') {
-                // Excel Zeit (Dezimalwert)
-                const hours = Math.floor(timeValue * 24);
-                const minutes = Math.floor((timeValue * 24 * 60) % 60);
-                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-              } else {
-                // String Zeit
-                const timeStr = timeValue.toString().trim();
-                if (timeStr.match(/^\d{1,2}:\d{2}$/)) {
-                  return timeStr;
-                }
-                return null;
+              if (!timeValue) return null;
+              const timeStr = timeValue.toString().trim();
+              
+              // HH:MM Format
+              if (timeStr.match(/^\d{1,2}:\d{2}$/)) {
+                const [h, m] = timeStr.split(':');
+                return `${h.padStart(2, '0')}:${m}`;
               }
+              
+              // Dezimalzahl (Excel Zeit)
+              if (!isNaN(timeValue) && timeValue < 1) {
+                const hours = Math.floor(timeValue * 24);
+                const minutes = Math.round((timeValue * 24 * 60) % 60);
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+              }
+              
+              return null;
             };
 
             const startTime = formatTime(startTimeValue);
             const endTime = formatTime(endTimeValue);
 
             if (!startTime || !endTime) {
+              console.log('Ungültige Zeiten:', { start: startTimeValue, end: endTimeValue });
               skippedCount++;
               continue;
             }
 
-            // Dauer berechnen oder aus Datei übernehmen
+            // Dauer berechnen
+            const calculateDuration = (start, end) => {
+              const [startH, startM] = start.split(':').map(Number);
+              const [endH, endM] = end.split(':').map(Number);
+              const startMinutes = startH * 60 + startM;
+              let endMinutes = endH * 60 + endM;
+              
+              if (endMinutes < startMinutes) {
+                endMinutes += 24 * 60;
+              }
+              
+              return (endMinutes - startMinutes) / 60;
+            };
+
             let duration;
-            if (columnMap.duration !== undefined && row[columnMap.duration]) {
-              duration = parseFloat(row[columnMap.duration]);
+            if (colDuration && row[colDuration]) {
+              duration = parseFloat(row[colDuration]);
             } else {
               duration = calculateDuration(startTime, endTime);
             }
 
             if (duration <= 0) {
+              console.log('Ungültige Dauer:', duration);
               skippedCount++;
               continue;
             }
 
             // Kategorie zuordnen
             let category = 'other';
-            if (columnMap.category !== undefined && row[columnMap.category]) {
-              const categoryName = row[columnMap.category].toString().toLowerCase();
-              const foundCategory = categories.find(cat => 
-                cat.name.toLowerCase().includes(categoryName) || 
-                categoryName.includes(cat.name.toLowerCase())
-              );
-              if (foundCategory) {
-                category = foundCategory.id;
+            if (colCategory && row[colCategory]) {
+              const categoryName = row[colCategory].toString().toLowerCase();
+              const categoryMap = {
+                'unterricht': 'teaching',
+                'teaching': 'teaching',
+                'korrektur': 'grading',
+                'grading': 'grading',
+                'correction': 'grading',
+                'meeting': 'meeting',
+                'konferenz': 'meeting',
+                'besprechung': 'meeting',
+                'verwaltung': 'admin',
+                'admin': 'admin',
+                'organization': 'admin',
+                'fortbildung': 'training',
+                'training': 'training',
+                'workshop': 'training',
+                'veranstaltung': 'event',
+                'event': 'event'
+              };
+              
+              for (const [key, value] of Object.entries(categoryMap)) {
+                if (categoryName.includes(key)) {
+                  category = value;
+                  break;
+                }
               }
             }
 
             // Projekt
-            const project = columnMap.project !== undefined ? (row[columnMap.project] || '').toString().trim() : '';
+            const project = colProject && row[colProject] ? row[colProject].toString().trim() : '';
 
             // Neuen Eintrag erstellen
             const newEntry = {
-              id: generateId(),
+              id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
               date: parsedDate.toISOString().split('T')[0],
               startTime: startTime,
               endTime: endTime,
@@ -2273,9 +2390,10 @@
 
             newEntries.push(newEntry);
             importedCount++;
+            console.log('✅ Eintrag erstellt:', newEntry);
 
           } catch (error) {
-            console.error('Fehler beim Verarbeiten der Zeile:', error);
+            console.error('Fehler beim Verarbeiten der Zeile:', error, row);
             skippedCount++;
           }
         }
@@ -2287,17 +2405,18 @@
           renderApp();
           
           showToast(`🎉 ${importedCount} Einträge erfolgreich importiert! ${skippedCount > 0 ? `(${skippedCount} übersprungen)` : ''}`, 'success');
+          console.log(`✅ Import abgeschlossen: ${importedCount} importiert, ${skippedCount} übersprungen`);
         } else {
           showToast('Keine gültigen Einträge zum Importieren gefunden.', 'error');
+          console.error('Keine Einträge importiert. Überprüfen Sie das Dateiformat.');
         }
 
       } catch (error) {
-        console.error('Excel Import Fehler:', error);
-        showToast('Fehler beim Importieren der Excel-Datei. Bitte überprüfen Sie das Format.', 'error');
+        console.error('Import Fehler:', error);
+        showToast(`Fehler beim Importieren: ${error.message}`, 'error');
       } finally {
         importBtn.disabled = false;
         importBtn.innerHTML = originalText;
-        // File Input zurücksetzen
         e.target.value = '';
       }
     }
