@@ -1,0 +1,1591 @@
+<!doctype html>
+<html lang="de">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zeiterfassung</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      -webkit-overflow-scrolling: touch;
+    }
+    html {
+      height: 100%;
+    }
+    
+    @keyframes slideInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.8; }
+    }
+    
+    @keyframes bounce {
+      0%, 20%, 53%, 80%, 100% { transform: translate3d(0,0,0); }
+      40%, 43% { transform: translate3d(0, -8px, 0); }
+      70% { transform: translate3d(0, -4px, 0); }
+      90% { transform: translate3d(0, -2px, 0); }
+    }
+    
+    @keyframes glow {
+      0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); }
+      50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.6); }
+    }
+    
+    .slide-in-up {
+      animation: slideInUp 0.6s ease-out;
+    }
+    
+    .fade-in {
+      animation: fadeIn 0.4s ease-out;
+    }
+    
+    .pulse-animation {
+      animation: pulse 3s infinite;
+    }
+    
+    .bounce-animation {
+      animation: bounce 2s infinite;
+    }
+    
+    .glow-animation {
+      animation: glow 2s infinite;
+    }
+    
+    .glass-card {
+      backdrop-filter: blur(20px);
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+    
+    .gradient-border {
+      position: relative;
+      background: linear-gradient(45deg, #667eea, #764ba2, #f093fb, #f5576c);
+      background-size: 400% 400%;
+      animation: gradientShift 4s ease infinite;
+      padding: 2px;
+      border-radius: 16px;
+    }
+    
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    
+    .gradient-border > div {
+      background: white;
+      border-radius: 14px;
+      padding: 16px;
+    }
+    
+    .hover-scale {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .hover-scale:active {
+      transform: scale(0.98);
+    }
+    
+    .time-input {
+      transition: all 0.3s ease;
+      position: relative;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+    }
+    
+    .time-input:focus {
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+    }
+    
+    .category-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 16px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    
+    .floating-action {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s ease;
+      z-index: 100;
+      border: none;
+      cursor: pointer;
+    }
+    
+    .floating-action:active {
+      transform: scale(0.95);
+    }
+    
+    .stats-card {
+      background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: all 0.3s ease;
+    }
+    
+    .stats-card:active {
+      transform: scale(0.98);
+    }
+    
+    .progress-ring {
+      transform: rotate(-90deg);
+    }
+    
+    .progress-ring-circle {
+      transition: stroke-dashoffset 0.5s ease-in-out;
+    }
+    
+    /* Mobile Navigation */
+    .mobile-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(30, 41, 59, 0.95);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 8px 0;
+      z-index: 50;
+    }
+    
+    .mobile-nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 4px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      border-radius: 12px;
+      margin: 0 4px;
+    }
+    
+    .mobile-nav-item.active {
+      background: rgba(59, 130, 246, 0.2);
+    }
+    
+    .mobile-nav-item:active {
+      transform: scale(0.95);
+    }
+    
+    .mobile-nav-icon {
+      font-size: 20px;
+      margin-bottom: 2px;
+    }
+    
+    .mobile-nav-text {
+      font-size: 10px;
+      font-weight: 600;
+    }
+    
+    /* Mobile Optimizations */
+    @media (max-width: 768px) {
+      .gradient-border > div {
+        padding: 12px;
+      }
+      
+      .floating-action {
+        display: none;
+      }
+      
+      .mobile-only {
+        display: block !important;
+      }
+      
+      .desktop-only {
+        display: none !important;
+      }
+      
+      .mobile-grid {
+        grid-template-columns: 1fr !important;
+      }
+      
+      .mobile-text-sm {
+        font-size: 14px !important;
+      }
+      
+      .mobile-text-xs {
+        font-size: 12px !important;
+      }
+      
+      .mobile-p-2 {
+        padding: 8px !important;
+      }
+      
+      .mobile-p-3 {
+        padding: 12px !important;
+      }
+      
+      .mobile-mb-2 {
+        margin-bottom: 8px !important;
+      }
+      
+      .mobile-mb-4 {
+        margin-bottom: 16px !important;
+      }
+      
+      .mobile-gap-2 {
+        gap: 8px !important;
+      }
+      
+      .mobile-gap-3 {
+        gap: 12px !important;
+      }
+      
+      .mobile-rounded {
+        border-radius: 12px !important;
+      }
+    }
+    
+    /* Smooth scrolling */
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    /* Custom scrollbar for mobile */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.1);
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: rgba(59, 130, 246, 0.5);
+      border-radius: 3px;
+    }
+    
+    /* Loading overlay */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    
+    .loading-spinner {
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+ </head>
+ <body>
+  <div id="app"></div>
+
+  <script>
+    // ===========================================
+    // GITHUB KONFIGURATION
+    // ===========================================
+    // BITTE HIER DEINE GITHUB-DATEN EINTRAGEN:
+    const GITHUB_CONFIG = {
+      owner: 'DEIN_GITHUB_USERNAME',        // z.B. 'maxmustermann'
+      repo: 'DEIN_REPOSITORY_NAME',          // z.B. 'zeiterfassung'
+      token: 'DEIN_PERSONAL_ACCESS_TOKEN',   // z.B. 'ghp_xxxxxxxxxxxx'
+      dataFile: 'data.json',                 // Name der JSON-Datei
+      branch: 'main'                         // Normalerweise 'main' oder 'master'
+    };
+
+    // ===========================================
+    // DATEN-VARIABLEN
+    // ===========================================
+    let timeEntries = [];
+    let todoItems = [];
+    let fileSha = null; // Wird benötigt für GitHub Updates
+    let isLoading = false;
+
+    // ===========================================
+    // GITHUB API FUNKTIONEN
+    // ===========================================
+    
+    async function loadFromGitHub() {
+      if (isLoading) return;
+      isLoading = true;
+      showLoadingOverlay(true);
+      
+      try {
+        const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.dataFile}`;
+        
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `token ${GITHUB_CONFIG.token}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          fileSha = data.sha; // SHA für zukünftige Updates speichern
+          
+          // Base64-dekodieren und JSON parsen
+          const content = atob(data.content);
+          const jsonData = JSON.parse(content);
+          
+          timeEntries = jsonData.timeEntries || [];
+          todoItems = jsonData.todoItems || [];
+          
+          console.log('✅ Daten erfolgreich von GitHub geladen:', timeEntries.length, 'Einträge,', todoItems.length, 'To-Dos');
+          showToast('✅ Daten von GitHub geladen!', 'success');
+        } else if (response.status === 404) {
+          // Datei existiert noch nicht - wird beim ersten Speichern erstellt
+          console.log('ℹ️ Keine Daten auf GitHub gefunden. Neue Datei wird beim ersten Speichern erstellt.');
+          timeEntries = [];
+          todoItems = [];
+        } else {
+          throw new Error(`GitHub API Fehler: ${response.status}`);
+        }
+      } catch (error) {
+        console.error('❌ Fehler beim Laden von GitHub:', error);
+        showToast('⚠️ Fehler beim Laden von GitHub. Lokale Daten werden verwendet.', 'error');
+        
+        // Fallback auf localStorage
+        loadFromLocalStorage();
+      } finally {
+        isLoading = false;
+        showLoadingOverlay(false);
+      }
+    }
+
+    async function saveToGitHub() {
+      if (isLoading) return;
+      isLoading = true;
+      showLoadingOverlay(true);
+      
+      try {
+        const data = {
+          timeEntries: timeEntries,
+          todoItems: todoItems,
+          lastUpdated: new Date().toISOString()
+        };
+        
+        const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+        
+        const url = `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${GITHUB_CONFIG.dataFile}`;
+        
+        const body = {
+          message: `Update Zeiterfassung - ${new Date().toLocaleString('de-DE')}`,
+          content: content,
+          branch: GITHUB_CONFIG.branch
+        };
+        
+        // Wenn die Datei bereits existiert, SHA mitschicken
+        if (fileSha) {
+          body.sha = fileSha;
+        }
+        
+        const response = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `token ${GITHUB_CONFIG.token}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          fileSha = result.content.sha; // Neue SHA für zukünftige Updates
+          
+          console.log('✅ Daten erfolgreich auf GitHub gespeichert!');
+          showToast('✅ Auf GitHub gespeichert!', 'success');
+          
+          // Auch lokal speichern als Backup
+          saveToLocalStorage();
+        } else {
+          const errorData = await response.json();
+          throw new Error(`GitHub API Fehler: ${response.status} - ${errorData.message}`);
+        }
+      } catch (error) {
+        console.error('❌ Fehler beim Speichern auf GitHub:', error);
+        showToast('⚠️ GitHub-Speicherung fehlgeschlagen. Daten wurden lokal gespeichert.', 'error');
+        
+        // Fallback auf localStorage
+        saveToLocalStorage();
+      } finally {
+        isLoading = false;
+        showLoadingOverlay(false);
+      }
+    }
+
+    // ===========================================
+    // LOKALSPEICHER FUNKTIONEN (BACKUP)
+    // ===========================================
+    
+    function saveToLocalStorage() {
+      try {
+        localStorage.setItem('teachracoon_time_entries', JSON.stringify(timeEntries));
+        localStorage.setItem('teachracoon_todo_items', JSON.stringify(todoItems));
+      } catch (error) {
+        console.error('LocalStorage Fehler:', error);
+      }
+    }
+
+    function loadFromLocalStorage() {
+      try {
+        const savedEntries = localStorage.getItem('teachracoon_time_entries');
+        const savedTodos = localStorage.getItem('teachracoon_todo_items');
+        
+        if (savedEntries) {
+          timeEntries = JSON.parse(savedEntries);
+        }
+        
+        if (savedTodos) {
+          todoItems = JSON.parse(savedTodos);
+        }
+      } catch (error) {
+        console.error('LocalStorage Fehler:', error);
+        timeEntries = [];
+        todoItems = [];
+      }
+    }
+
+    // ===========================================
+    // UI HELPER FUNKTIONEN
+    // ===========================================
+    
+    function showLoadingOverlay(show) {
+      const existing = document.getElementById('loading-overlay');
+      if (existing) {
+        existing.remove();
+      }
+      
+      if (show) {
+        const overlay = document.createElement('div');
+        overlay.id = 'loading-overlay';
+        overlay.className = 'loading-overlay';
+        overlay.innerHTML = `
+          <div style="text-align: center;">
+            <div class="loading-spinner"></div>
+            <p style="color: white; margin-top: 16px; font-size: 14px;">Synchronisiere mit GitHub...</p>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 16px 24px;
+        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+        color: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        z-index: 2000;
+        font-size: 14px;
+        font-weight: 500;
+        animation: slideInUp 0.3s ease-out;
+        max-width: 300px;
+      `;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.animation = 'fadeOut 0.3s ease-out';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    // ===========================================
+    // REST DER APP (ORIGINAL CODE)
+    // ===========================================
+    
+    const SCHOOL_YEAR = {
+      weeklyHours: 17,
+      totalHours: 28 * 17
+    };
+
+    const defaultConfig = {
+      app_title: "Zeiterfassung TeachRacoon",
+      company_name: "TeachRacoon",
+      weekly_target: 17,
+      export_button_text: "Excel Export",
+      background_color: "#0f172a",
+      surface_color: "#1e293b",
+      text_color: "#f1f5f9",
+      primary_action_color: "#3b82f6",
+      secondary_action_color: "#8b5cf6",
+      font_family: "system-ui, -apple-system, sans-serif",
+      font_size: 16
+    };
+
+    const categories = [
+      { id: 'teaching', name: '📚 Unterricht', color: '#3b82f6', emoji: '📚' },
+      { id: 'preparation', name: '📝 Vorbereitung', color: '#8b5cf6', emoji: '📝' },
+      { id: 'correction', name: '✅ Korrektur', color: '#10b981', emoji: '✅' },
+      { id: 'meeting', name: '🤝 Besprechungen', color: '#f59e0b', emoji: '🤝' },
+      { id: 'admin', name: '📋 Verwaltung', color: '#6366f1', emoji: '📋' },
+      { id: 'development', name: '🎓 Weiterbildung', color: '#ec4899', emoji: '🎓' },
+      { id: 'parents', name: '👨‍👩‍👧 Elternarbeit', color: '#14b8a6', emoji: '👨‍👩‍👧' },
+      { id: 'other', name: '⚡ Sonstiges', color: '#64748b', emoji: '⚡' }
+    ];
+
+    const todoPriorities = [
+      { id: 'low', name: 'Niedrig', color: '#64748b', emoji: '⬇️' },
+      { id: 'medium', name: 'Mittel', color: '#f59e0b', emoji: '➡️' },
+      { id: 'high', name: 'Hoch', color: '#ef4444', emoji: '⬆️' },
+      { id: 'urgent', name: 'Dringend', color: '#dc2626', emoji: '🔥' }
+    ];
+
+    let currentView = 'dashboard';
+    let editingEntryIndex = null;
+    let editingTodoIndex = null;
+
+    function getConfig() {
+      return defaultConfig;
+    }
+
+    function formatDate(dateString) {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('de-DE', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric' 
+      });
+    }
+
+    function formatTime(timeString) {
+      return timeString.substring(0, 5);
+    }
+
+    function calculateDuration(start, end) {
+      const startMinutes = parseInt(start.split(':')[0]) * 60 + parseInt(start.split(':')[1]);
+      const endMinutes = parseInt(end.split(':')[0]) * 60 + parseInt(end.split(':')[1]);
+      return (endMinutes - startMinutes) / 60;
+    }
+
+    function getWeekNumber(date) {
+      const d = new Date(date);
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+      const yearStart = new Date(d.getFullYear(), 0, 1);
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return weekNo;
+    }
+
+    function calculateWeekStats() {
+      const weekMap = new Map();
+      
+      timeEntries.forEach(entry => {
+        const date = new Date(entry.date);
+        const year = date.getFullYear();
+        const week = getWeekNumber(entry.date);
+        const key = `${year}-W${week}`;
+        
+        if (!weekMap.has(key)) {
+          weekMap.set(key, {
+            year,
+            week,
+            total: 0,
+            entries: []
+          });
+        }
+        
+        const weekData = weekMap.get(key);
+        weekData.total += entry.duration;
+        weekData.entries.push(entry);
+      });
+      
+      return Array.from(weekMap.values()).sort((a, b) => {
+        if (a.year !== b.year) return b.year - a.year;
+        return b.week - a.week;
+      });
+    }
+
+    function calculateStats() {
+      const config = getConfig();
+      const weeklyTarget = config.weekly_target || SCHOOL_YEAR.weeklyHours;
+      const totalTarget = SCHOOL_YEAR.totalHours;
+      
+      const totalHours = timeEntries.reduce((sum, entry) => sum + entry.duration, 0);
+      
+      const currentDate = new Date();
+      const currentYear = currentDate.getFullYear();
+      const currentWeek = getWeekNumber(currentDate);
+      
+      const weekHours = timeEntries
+        .filter(entry => {
+          const entryDate = new Date(entry.date);
+          return entryDate.getFullYear() === currentYear && 
+                 getWeekNumber(entry.date) === currentWeek;
+        })
+        .reduce((sum, entry) => sum + entry.duration, 0);
+      
+      const categoryStats = categories.map(category => {
+        const hours = timeEntries
+          .filter(entry => entry.category === category.id)
+          .reduce((sum, entry) => sum + entry.duration, 0);
+        
+        return {
+          ...category,
+          hours,
+          percentage: totalHours > 0 ? (hours / totalHours * 100) : 0
+        };
+      }).sort((a, b) => b.hours - a.hours);
+      
+      return {
+        totalHours,
+        weekHours,
+        weeklyTarget,
+        totalTarget,
+        weekBalance: weekHours - weeklyTarget,
+        totalBalance: totalHours - totalTarget,
+        categoryStats
+      };
+    }
+
+    function renderDashboard() {
+      const stats = calculateStats();
+      const config = getConfig();
+      
+      const weekProgress = Math.min((stats.weekHours / stats.weeklyTarget) * 100, 100);
+      const totalProgress = Math.min((stats.totalHours / stats.totalTarget) * 100, 100);
+      
+      return `
+        <div class="p-4 pb-20 space-y-4" style="background: linear-gradient(135deg, ${config.background_color} 0%, ${config.surface_color} 100%); min-height: 100vh;">
+          
+          <!-- Header -->
+          <div class="slide-in-up mb-6">
+            <h1 class="text-3xl font-bold mb-2" style="color: ${config.text_color};">
+              ${config.app_title}
+            </h1>
+            <p class="text-sm opacity-75" style="color: ${config.text_color};">
+              📊 Deine Stundenübersicht auf einen Blick
+            </p>
+          </div>
+
+          <!-- Wochenstatistik -->
+          <div class="gradient-border slide-in-up" style="animation-delay: 0.1s;">
+            <div class="p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold" style="color: ${config.primary_action_color};">
+                  📅 Aktuelle Woche
+                </h2>
+                <span class="text-2xl font-bold" style="color: ${stats.weekBalance >= 0 ? '#10b981' : '#ef4444'};">
+                  ${stats.weekBalance >= 0 ? '+' : ''}${stats.weekBalance.toFixed(1)}h
+                </span>
+              </div>
+              
+              <div class="mb-4">
+                <div class="flex justify-between text-sm mb-2" style="color: ${config.text_color};">
+                  <span>${stats.weekHours.toFixed(1)}h / ${stats.weeklyTarget.toFixed(1)}h</span>
+                  <span>${weekProgress.toFixed(0)}%</span>
+                </div>
+                <div class="h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div class="h-full transition-all duration-500 rounded-full glow-animation" 
+                       style="width: ${weekProgress}%; background: linear-gradient(90deg, ${config.primary_action_color}, ${config.secondary_action_color});"></div>
+                </div>
+              </div>
+              
+              <p class="text-sm opacity-75" style="color: ${config.text_color};">
+                ${stats.weekBalance >= 0 
+                  ? `🎉 Super! Du hast ${stats.weekBalance.toFixed(1)}h mehr gearbeitet!` 
+                  : `⏰ Noch ${Math.abs(stats.weekBalance).toFixed(1)}h bis zum Wochenziel!`}
+              </p>
+            </div>
+          </div>
+
+          <!-- Gesamtstatistik -->
+          <div class="gradient-border slide-in-up" style="animation-delay: 0.2s;">
+            <div class="p-6">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold" style="color: ${config.primary_action_color};">
+                  📈 Praxissemester Gesamt
+                </h2>
+                <span class="text-2xl font-bold" style="color: ${stats.totalBalance >= 0 ? '#10b981' : '#ef4444'};">
+                  ${stats.totalBalance >= 0 ? '+' : ''}${stats.totalBalance.toFixed(1)}h
+                </span>
+              </div>
+              
+              <div class="mb-4">
+                <div class="flex justify-between text-sm mb-2" style="color: ${config.text_color};">
+                  <span>${stats.totalHours.toFixed(1)}h / ${stats.totalTarget.toFixed(1)}h</span>
+                  <span>${totalProgress.toFixed(0)}%</span>
+                </div>
+                <div class="h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div class="h-full transition-all duration-500 rounded-full" 
+                       style="width: ${totalProgress}%; background: linear-gradient(90deg, #10b981, #3b82f6);"></div>
+                </div>
+              </div>
+              
+              <p class="text-sm opacity-75" style="color: ${config.text_color};">
+                ${stats.totalBalance >= 0 
+                  ? `✅ Glückwunsch! ${stats.totalBalance.toFixed(1)}h über dem Ziel!` 
+                  : `📊 Noch ${Math.abs(stats.totalBalance).toFixed(1)}h bis zum Gesamtziel!`}
+              </p>
+            </div>
+          </div>
+
+          <!-- Kategorieverteilung -->
+          <div class="gradient-border slide-in-up" style="animation-delay: 0.3s;">
+            <div class="p-6">
+              <h2 class="text-xl font-bold mb-4" style="color: ${config.primary_action_color};">
+                🎯 Zeitverteilung nach Kategorie
+              </h2>
+              
+              <div class="space-y-3">
+                ${stats.categoryStats.filter(cat => cat.hours > 0).map(category => `
+                  <div class="p-3 rounded-lg hover-scale" style="background: rgba(255, 255, 255, 0.05);">
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="font-semibold" style="color: ${config.text_color};">
+                        ${category.emoji} ${category.name}
+                      </span>
+                      <span class="font-bold" style="color: ${category.color};">
+                        ${category.hours.toFixed(1)}h
+                      </span>
+                    </div>
+                    <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div class="h-full transition-all duration-500 rounded-full" 
+                           style="width: ${category.percentage}%; background: ${category.color};"></div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="grid grid-cols-2 gap-4 slide-in-up" style="animation-delay: 0.4s;">
+            <button onclick="switchView('entries')" 
+                    class="p-6 rounded-2xl hover-scale" 
+                    style="background: linear-gradient(135deg, ${config.primary_action_color}, ${config.secondary_action_color}); color: white;">
+              <div class="text-3xl mb-2">⏱️</div>
+              <div class="font-bold">Zeit erfassen</div>
+              <div class="text-xs opacity-75 mt-1">${timeEntries.length} Einträge</div>
+            </button>
+            
+            <button onclick="switchView('todos')" 
+                    class="p-6 rounded-2xl hover-scale" 
+                    style="background: linear-gradient(135deg, #10b981, #3b82f6); color: white;">
+              <div class="text-3xl mb-2">✓</div>
+              <div class="font-bold">To-Do Liste</div>
+              <div class="text-xs opacity-75 mt-1">${todoItems.filter(t => !t.completed).length} offen</div>
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderEntriesView() {
+      const config = getConfig();
+      const weekStats = calculateWeekStats();
+      
+      return `
+        <div class="p-4 pb-20 space-y-4" style="background: linear-gradient(135deg, ${config.background_color} 0%, ${config.surface_color} 100%); min-height: 100vh;">
+          
+          <!-- Header mit Export -->
+          <div class="flex items-center justify-between mb-4 slide-in-up">
+            <h1 class="text-2xl font-bold" style="color: ${config.text_color};">
+              ⏱️ Zeiteinträge
+            </h1>
+            <button onclick="exportToExcel()" 
+                    class="px-4 py-2 rounded-lg font-semibold hover-scale text-sm"
+                    style="background: linear-gradient(135deg, ${config.primary_action_color}, ${config.secondary_action_color}); color: white;">
+              📊 ${config.export_button_text}
+            </button>
+          </div>
+
+          <!-- Neuer Eintrag -->
+          <div class="gradient-border slide-in-up" style="animation-delay: 0.1s;">
+            <div>
+              <h2 class="text-lg font-bold mb-4" style="color: ${config.primary_action_color};">
+                ${editingEntryIndex !== null ? '✏️ Eintrag bearbeiten' : '➕ Neuer Eintrag'}
+              </h2>
+              
+              <form onsubmit="saveEntry(event)" class="space-y-3">
+                <div>
+                  <label class="block text-sm font-medium mb-1" style="color: ${config.text_color};">Datum</label>
+                  <input type="date" id="entry-date" required 
+                         class="w-full px-4 py-3 rounded-lg border-2 time-input"
+                         style="border-color: ${config.primary_action_color};">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-sm font-medium mb-1" style="color: ${config.text_color};">Von</label>
+                    <input type="time" id="entry-start" required 
+                           class="w-full px-4 py-3 rounded-lg border-2 time-input"
+                           style="border-color: ${config.primary_action_color};">
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium mb-1" style="color: ${config.text_color};">Bis</label>
+                    <input type="time" id="entry-end" required 
+                           class="w-full px-4 py-3 rounded-lg border-2 time-input"
+                           style="border-color: ${config.primary_action_color};">
+                  </div>
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium mb-1" style="color: ${config.text_color};">Kategorie</label>
+                  <select id="entry-category" required 
+                          class="w-full px-4 py-3 rounded-lg border-2"
+                          style="border-color: ${config.primary_action_color};">
+                    ${categories.map(cat => `
+                      <option value="${cat.id}">${cat.emoji} ${cat.name}</option>
+                    `).join('')}
+                  </select>
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium mb-1" style="color: ${config.text_color};">Projekt (optional)</label>
+                  <input type="text" id="entry-project" 
+                         class="w-full px-4 py-3 rounded-lg border-2"
+                         placeholder="z.B. Mathe Klasse 7a"
+                         style="border-color: ${config.primary_action_color};">
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium mb-1" style="color: ${config.text_color};">Beschreibung</label>
+                  <textarea id="entry-description" rows="3" 
+                            class="w-full px-4 py-3 rounded-lg border-2"
+                            placeholder="Was hast du gemacht?"
+                            style="border-color: ${config.primary_action_color};"></textarea>
+                </div>
+                
+                <div class="flex gap-2">
+                  <button type="submit" 
+                          class="flex-1 py-3 rounded-lg font-bold hover-scale"
+                          style="background: linear-gradient(135deg, ${config.primary_action_color}, ${config.secondary_action_color}); color: white;">
+                    ${editingEntryIndex !== null ? '💾 Speichern' : '➕ Hinzufügen'}
+                  </button>
+                  ${editingEntryIndex !== null ? `
+                    <button type="button" onclick="cancelEditEntry()" 
+                            class="px-6 py-3 rounded-lg font-bold hover-scale"
+                            style="background: #64748b; color: white;">
+                      ❌ Abbrechen
+                    </button>
+                  ` : ''}
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Einträge nach Wochen gruppiert -->
+          <div class="space-y-4 slide-in-up" style="animation-delay: 0.2s;">
+            ${weekStats.length === 0 ? `
+              <div class="text-center py-12" style="color: ${config.text_color};">
+                <div class="text-6xl mb-4 bounce-animation">📝</div>
+                <p class="text-lg font-semibold mb-2">Noch keine Einträge</p>
+                <p class="text-sm opacity-75">Erfasse deine erste Arbeitszeit oben!</p>
+              </div>
+            ` : weekStats.map(week => `
+              <div class="gradient-border">
+                <div>
+                  <div class="flex items-center justify-between mb-3 pb-3 border-b-2" style="border-color: ${config.primary_action_color};">
+                    <h3 class="text-lg font-bold" style="color: ${config.text_color};">
+                      📅 KW${week.week} ${week.year}
+                    </h3>
+                    <div class="text-right">
+                      <div class="text-2xl font-bold" style="color: ${config.primary_action_color};">
+                        ${week.total.toFixed(1)}h
+                      </div>
+                      <div class="text-xs opacity-75" style="color: ${config.text_color};">
+                        ${week.entries.length} ${week.entries.length === 1 ? 'Eintrag' : 'Einträge'}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div class="space-y-2">
+                    ${week.entries.map((entry, index) => {
+                      const category = categories.find(c => c.id === entry.category) || categories[0];
+                      const globalIndex = timeEntries.indexOf(entry);
+                      
+                      return `
+                        <div class="p-3 rounded-lg hover-scale" 
+                             style="background: rgba(255, 255, 255, 0.05); border-left: 4px solid ${category.color};">
+                          <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                              <div class="flex items-center gap-2 mb-1">
+                                <span class="text-sm font-semibold" style="color: ${config.text_color};">
+                                  ${formatDate(entry.date)}
+                                </span>
+                                <span class="category-badge" style="background: ${category.color}20; color: ${category.color};">
+                                  ${category.emoji} ${category.name}
+                                </span>
+                              </div>
+                              
+                              <div class="text-xs opacity-75 mb-2" style="color: ${config.text_color};">
+                                ⏰ ${formatTime(entry.startTime)} - ${formatTime(entry.endTime)} 
+                                <span class="font-bold ml-2" style="color: ${config.primary_action_color};">
+                                  ${entry.duration.toFixed(2)}h
+                                </span>
+                              </div>
+                              
+                              ${entry.project ? `
+                                <div class="text-xs font-semibold mb-1" style="color: ${config.primary_action_color};">
+                                  📁 ${entry.project}
+                                </div>
+                              ` : ''}
+                              
+                              ${entry.description ? `
+                                <div class="text-sm" style="color: ${config.text_color};">
+                                  ${entry.description}
+                                </div>
+                              ` : ''}
+                            </div>
+                            
+                            <div class="flex gap-1 ml-2">
+                              <button onclick="editEntry(${globalIndex})" 
+                                      class="px-2 py-1 rounded hover-scale text-xs"
+                                      style="background: ${config.primary_action_color}; color: white;"
+                                      title="Bearbeiten">
+                                ✏️
+                              </button>
+                              <button onclick="deleteEntry(${globalIndex})" 
+                                      class="px-2 py-1 rounded hover-scale text-xs"
+                                      style="background: #ef4444; color: white;"
+                                      title="Löschen">
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      `;
+                    }).join('')}
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderTodosView() {
+      const config = getConfig();
+      const openTodos = todoItems.filter(t => !t.completed);
+      const completedTodos = todoItems.filter(t => t.completed);
+      
+      return `
+        <div class="p-4 pb-20 space-y-4" style="background: linear-gradient(135deg, ${config.background_color} 0%, ${config.surface_color} 100%); min-height: 100vh;">
+          
+          <!-- Header mit Export -->
+          <div class="flex items-center justify-between mb-4 slide-in-up">
+            <h1 class="text-2xl font-bold" style="color: ${config.text_color};">
+              ✓ To-Do Liste
+            </h1>
+            <button onclick="exportTodosToExcel()" 
+                    class="px-4 py-2 rounded-lg font-semibold hover-scale text-sm"
+                    style="background: linear-gradient(135deg, ${config.primary_action_color}, ${config.secondary_action_color}); color: white;">
+              📊 Excel Export
+            </button>
+          </div>
+
+          <!-- Neue Aufgabe -->
+          <div class="gradient-border slide-in-up" style="animation-delay: 0.1s;">
+            <div>
+              <h2 class="text-lg font-bold mb-4" style="color: ${config.primary_action_color};">
+                ${editingTodoIndex !== null ? '✏️ Aufgabe bearbeiten' : '➕ Neue Aufgabe'}
+              </h2>
+              
+              <form onsubmit="saveTodo(event)" class="space-y-3">
+                <div>
+                  <label class="block text-sm font-medium mb-1" style="color: ${config.text_color};">Aufgabe</label>
+                  <input type="text" id="todo-title" required 
+                         class="w-full px-4 py-3 rounded-lg border-2"
+                         placeholder="Was muss erledigt werden?"
+                         style="border-color: ${config.primary_action_color};">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-sm font-medium mb-1" style="color: ${config.text_color};">Priorität</label>
+                    <select id="todo-priority" required 
+                            class="w-full px-4 py-3 rounded-lg border-2"
+                            style="border-color: ${config.primary_action_color};">
+                      ${todoPriorities.map(p => `
+                        <option value="${p.id}">${p.emoji} ${p.name}</option>
+                      `).join('')}
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label class="block text-sm font-medium mb-1" style="color: ${config.text_color};">Kategorie</label>
+                    <select id="todo-category" required 
+                            class="w-full px-4 py-3 rounded-lg border-2"
+                            style="border-color: ${config.primary_action_color};">
+                      ${categories.map(cat => `
+                        <option value="${cat.id}">${cat.emoji} ${cat.name}</option>
+                      `).join('')}
+                    </select>
+                  </div>
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium mb-1" style="color: ${config.text_color};">Fälligkeitsdatum (optional)</label>
+                  <input type="date" id="todo-duedate" 
+                         class="w-full px-4 py-3 rounded-lg border-2"
+                         style="border-color: ${config.primary_action_color};">
+                </div>
+                
+                <div>
+                  <label class="block text-sm font-medium mb-1" style="color: ${config.text_color};">Beschreibung (optional)</label>
+                  <textarea id="todo-description" rows="2" 
+                            class="w-full px-4 py-3 rounded-lg border-2"
+                            placeholder="Weitere Details..."
+                            style="border-color: ${config.primary_action_color};"></textarea>
+                </div>
+                
+                <div class="flex gap-2">
+                  <button type="submit" 
+                          class="flex-1 py-3 rounded-lg font-bold hover-scale"
+                          style="background: linear-gradient(135deg, ${config.primary_action_color}, ${config.secondary_action_color}); color: white;">
+                    ${editingTodoIndex !== null ? '💾 Speichern' : '➕ Hinzufügen'}
+                  </button>
+                  ${editingTodoIndex !== null ? `
+                    <button type="button" onclick="cancelEditTodo()" 
+                            class="px-6 py-3 rounded-lg font-bold hover-scale"
+                            style="background: #64748b; color: white;">
+                      ❌ Abbrechen
+                    </button>
+                  ` : ''}
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Offene Aufgaben -->
+          ${openTodos.length > 0 ? `
+            <div class="gradient-border slide-in-up" style="animation-delay: 0.2s;">
+              <div>
+                <h3 class="text-lg font-bold mb-3" style="color: ${config.primary_action_color};">
+                  📝 Offene Aufgaben (${openTodos.length})
+                </h3>
+                
+                <div class="space-y-2">
+                  ${openTodos.map((todo, index) => {
+                    const globalIndex = todoItems.indexOf(todo);
+                    const priority = todoPriorities.find(p => p.id === todo.priority) || todoPriorities[0];
+                    const category = categories.find(c => c.id === todo.category) || categories[0];
+                    const isOverdue = todo.dueDate && new Date(todo.dueDate) < new Date();
+                    
+                    return `
+                      <div class="p-3 rounded-lg hover-scale" 
+                           style="background: rgba(255, 255, 255, 0.05); border-left: 4px solid ${priority.color};">
+                        <div class="flex items-start gap-3">
+                          <button onclick="toggleTodo(${globalIndex})" 
+                                  class="mt-1 w-6 h-6 rounded border-2 flex items-center justify-center hover-scale flex-shrink-0"
+                                  style="border-color: ${priority.color};">
+                          </button>
+                          
+                          <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1 flex-wrap">
+                              <span class="font-semibold" style="color: ${config.text_color};">
+                                ${todo.title}
+                              </span>
+                              <span class="category-badge" style="background: ${priority.color}20; color: ${priority.color};">
+                                ${priority.emoji} ${priority.name}
+                              </span>
+                              <span class="category-badge" style="background: ${category.color}20; color: ${category.color};">
+                                ${category.emoji}
+                              </span>
+                            </div>
+                            
+                            ${todo.dueDate ? `
+                              <div class="text-xs mb-1" style="color: ${isOverdue ? '#ef4444' : config.text_color};">
+                                📅 ${formatDate(todo.dueDate)} ${isOverdue ? '(überfällig!)' : ''}
+                              </div>
+                            ` : ''}
+                            
+                            ${todo.description ? `
+                              <div class="text-sm opacity-75" style="color: ${config.text_color};">
+                                ${todo.description}
+                              </div>
+                            ` : ''}
+                          </div>
+                          
+                          <div class="flex gap-1">
+                            <button onclick="editTodo(${globalIndex})" 
+                                    class="px-2 py-1 rounded hover-scale text-xs"
+                                    style="background: ${config.primary_action_color}; color: white;">
+                              ✏️
+                            </button>
+                            <button onclick="deleteTodo(${globalIndex})" 
+                                    class="px-2 py-1 rounded hover-scale text-xs"
+                                    style="background: #ef4444; color: white;">
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            </div>
+          ` : `
+            <div class="text-center py-12 slide-in-up" style="color: ${config.text_color}; animation-delay: 0.2s;">
+              <div class="text-6xl mb-4 bounce-animation">✨</div>
+              <p class="text-lg font-semibold mb-2">Keine offenen Aufgaben</p>
+              <p class="text-sm opacity-75">Erstelle deine erste To-Do oben!</p>
+            </div>
+          `}
+
+          <!-- Erledigte Aufgaben -->
+          ${completedTodos.length > 0 ? `
+            <div class="gradient-border slide-in-up" style="animation-delay: 0.3s;">
+              <div>
+                <h3 class="text-lg font-bold mb-3" style="color: #10b981;">
+                  ✅ Erledigt (${completedTodos.length})
+                </h3>
+                
+                <div class="space-y-2">
+                  ${completedTodos.map((todo, index) => {
+                    const globalIndex = todoItems.indexOf(todo);
+                    const priority = todoPriorities.find(p => p.id === todo.priority) || todoPriorities[0];
+                    const category = categories.find(c => c.id === todo.category) || categories[0];
+                    
+                    return `
+                      <div class="p-3 rounded-lg opacity-60" 
+                           style="background: rgba(255, 255, 255, 0.05);">
+                        <div class="flex items-start gap-3">
+                          <button onclick="toggleTodo(${globalIndex})" 
+                                  class="mt-1 w-6 h-6 rounded border-2 flex items-center justify-center flex-shrink-0"
+                                  style="border-color: #10b981; background: #10b981; color: white;">
+                            ✓
+                          </button>
+                          
+                          <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1 flex-wrap">
+                              <span class="font-semibold line-through" style="color: ${config.text_color};">
+                                ${todo.title}
+                              </span>
+                              <span class="category-badge" style="background: ${category.color}20; color: ${category.color};">
+                                ${category.emoji}
+                              </span>
+                            </div>
+                            
+                            ${todo.completedAt ? `
+                              <div class="text-xs" style="color: ${config.text_color};">
+                                ✓ Erledigt am ${formatDate(todo.completedAt)}
+                              </div>
+                            ` : ''}
+                          </div>
+                          
+                          <button onclick="deleteTodo(${globalIndex})" 
+                                  class="px-2 py-1 rounded hover-scale text-xs"
+                                  style="background: #ef4444; color: white;">
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    function renderMobileNav() {
+      const config = getConfig();
+      
+      return `
+        <div class="mobile-nav">
+          <div class="flex justify-around px-2">
+            <a class="mobile-nav-item ${currentView === 'dashboard' ? 'active' : ''}" 
+               onclick="switchView('dashboard')" 
+               style="color: ${config.text_color};">
+              <div class="mobile-nav-icon">📊</div>
+              <div class="mobile-nav-text">Dashboard</div>
+            </a>
+            
+            <a class="mobile-nav-item ${currentView === 'entries' ? 'active' : ''}" 
+               onclick="switchView('entries')" 
+               style="color: ${config.text_color};">
+              <div class="mobile-nav-icon">⏱️</div>
+              <div class="mobile-nav-text">Zeiten</div>
+            </a>
+            
+            <a class="mobile-nav-item ${currentView === 'todos' ? 'active' : ''}" 
+               onclick="switchView('todos')" 
+               style="color: ${config.text_color};">
+              <div class="mobile-nav-icon">✓</div>
+              <div class="mobile-nav-text">To-Dos</div>
+            </a>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderApp() {
+      const app = document.getElementById('app');
+      
+      let content = '';
+      switch(currentView) {
+        case 'dashboard':
+          content = renderDashboard();
+          break;
+        case 'entries':
+          content = renderEntriesView();
+          break;
+        case 'todos':
+          content = renderTodosView();
+          break;
+      }
+      
+      app.innerHTML = content + renderMobileNav();
+      
+      if (editingEntryIndex !== null) {
+        fillEditEntryForm();
+      }
+      
+      if (editingTodoIndex !== null) {
+        fillEditTodoForm();
+      }
+    }
+
+    function switchView(view) {
+      currentView = view;
+      editingEntryIndex = null;
+      editingTodoIndex = null;
+      renderApp();
+      window.scrollTo(0, 0);
+    }
+
+    function saveEntry(e) {
+      e.preventDefault();
+      
+      const date = document.getElementById('entry-date').value;
+      const startTime = document.getElementById('entry-start').value;
+      const endTime = document.getElementById('entry-end').value;
+      const category = document.getElementById('entry-category').value;
+      const project = document.getElementById('entry-project').value;
+      const description = document.getElementById('entry-description').value;
+      
+      const duration = calculateDuration(startTime, endTime);
+      
+      if (duration <= 0) {
+        showToast('⚠️ Die Endzeit muss nach der Startzeit liegen!', 'error');
+        return;
+      }
+      
+      const entry = {
+        date,
+        startTime,
+        endTime,
+        duration,
+        category,
+        project,
+        description,
+        createdAt: new Date().toISOString()
+      };
+      
+      if (editingEntryIndex !== null) {
+        timeEntries[editingEntryIndex] = entry;
+        editingEntryIndex = null;
+        showToast('✏️ Eintrag erfolgreich aktualisiert!', 'success');
+      } else {
+        timeEntries.push(entry);
+        showToast('✅ Eintrag erfolgreich hinzugefügt!', 'success');
+      }
+      
+      timeEntries.sort((a, b) => {
+        const dateCompare = new Date(b.date) - new Date(a.date);
+        if (dateCompare !== 0) return dateCompare;
+        return b.startTime.localeCompare(a.startTime);
+      });
+      
+      saveToGitHub();
+      renderApp();
+    }
+
+    function editEntry(index) {
+      editingEntryIndex = index;
+      currentView = 'entries';
+      renderApp();
+      window.scrollTo(0, 0);
+    }
+
+    function fillEditEntryForm() {
+      const entry = timeEntries[editingEntryIndex];
+      document.getElementById('entry-date').value = entry.date;
+      document.getElementById('entry-start').value = entry.startTime;
+      document.getElementById('entry-end').value = entry.endTime;
+      document.getElementById('entry-category').value = entry.category;
+      document.getElementById('entry-project').value = entry.project || '';
+      document.getElementById('entry-description').value = entry.description || '';
+    }
+
+    function cancelEditEntry() {
+      editingEntryIndex = null;
+      renderApp();
+    }
+
+    function deleteEntry(index) {
+      if (confirm('Möchtest du diesen Eintrag wirklich löschen?')) {
+        timeEntries.splice(index, 1);
+        saveToGitHub();
+        renderApp();
+        showToast('🗑️ Eintrag erfolgreich gelöscht!', 'success');
+      }
+    }
+
+    function saveTodo(e) {
+      e.preventDefault();
+      
+      const title = document.getElementById('todo-title').value;
+      const priority = document.getElementById('todo-priority').value;
+      const category = document.getElementById('todo-category').value;
+      const dueDate = document.getElementById('todo-duedate').value;
+      const description = document.getElementById('todo-description').value;
+      
+      const todo = {
+        title,
+        priority,
+        category,
+        dueDate: dueDate || null,
+        description,
+        completed: false,
+        createdAt: new Date().toISOString(),
+        completedAt: null
+      };
+      
+      if (editingTodoIndex !== null) {
+        todo.completed = todoItems[editingTodoIndex].completed;
+        todo.completedAt = todoItems[editingTodoIndex].completedAt;
+        todoItems[editingTodoIndex] = todo;
+        editingTodoIndex = null;
+        showToast('✏️ Aufgabe erfolgreich aktualisiert!', 'success');
+      } else {
+        todoItems.push(todo);
+        showToast('✅ Aufgabe erfolgreich hinzugefügt!', 'success');
+      }
+      
+      saveToGitHub();
+      renderApp();
+    }
+
+    function editTodo(index) {
+      editingTodoIndex = index;
+      currentView = 'todos';
+      renderApp();
+      window.scrollTo(0, 0);
+    }
+
+    function fillEditTodoForm() {
+      const todo = todoItems[editingTodoIndex];
+      document.getElementById('todo-title').value = todo.title;
+      document.getElementById('todo-priority').value = todo.priority;
+      document.getElementById('todo-category').value = todo.category;
+      document.getElementById('todo-duedate').value = todo.dueDate || '';
+      document.getElementById('todo-description').value = todo.description || '';
+    }
+
+    function cancelEditTodo() {
+      editingTodoIndex = null;
+      renderApp();
+    }
+
+    function toggleTodo(index) {
+      todoItems[index].completed = !todoItems[index].completed;
+      todoItems[index].completedAt = todoItems[index].completed ? new Date().toISOString() : null;
+      saveToGitHub();
+      renderApp();
+      
+      if (todoItems[index].completed) {
+        showToast('🎉 Aufgabe erledigt! Super gemacht!', 'success');
+      } else {
+        showToast('↩️ Aufgabe wieder geöffnet!', 'info');
+      }
+    }
+
+    function deleteTodo(index) {
+      if (confirm('Möchtest du diese Aufgabe wirklich löschen?')) {
+        todoItems.splice(index, 1);
+        saveToGitHub();
+        renderApp();
+        showToast('🗑️ Aufgabe erfolgreich gelöscht!', 'success');
+      }
+    }
+
+    function exportTodosToExcel() {
+      try {
+        const data = [];
+        data.push(['Status', 'Aufgabe', 'Priorität', 'Kategorie', 'Fälligkeitsdatum', 'Beschreibung', 'Erstellt am', 'Erledigt am']);
+
+        todoItems.forEach(todo => {
+          const priority = todoPriorities.find(p => p.id === todo.priority) || todoPriorities[0];
+          const category = categories.find(c => c.id === todo.category) || categories[0];
+          
+          data.push([
+            todo.completed ? 'Erledigt' : 'Offen',
+            todo.title,
+            priority.name,
+            category.name,
+            todo.dueDate ? new Date(todo.dueDate).toLocaleDateString('de-DE') : '',
+            todo.description || '',
+            new Date(todo.createdAt).toLocaleDateString('de-DE'),
+            todo.completedAt ? new Date(todo.completedAt).toLocaleDateString('de-DE') : ''
+          ]);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        
+        ws['!cols'] = [
+          { wch: 10 },
+          { wch: 40 },
+          { wch: 12 },
+          { wch: 20 },
+          { wch: 15 },
+          { wch: 50 },
+          { wch: 12 },
+          { wch: 12 }
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'ToDo_Liste');
+
+        const filename = `ToDo_Liste_${new Date().toISOString().split('T')[0]}.xlsx`;
+        
+        XLSX.writeFile(wb, filename);
+        
+        showToast('📊 To-Do Liste wird heruntergeladen!', 'success');
+      } catch (error) {
+        console.error('Excel Export Fehler:', error);
+        showToast('Fehler beim Excel-Export.', 'error');
+      }
+    }
+
+    function exportToExcel() {
+      const weekStats = calculateWeekStats();
+      const weeklyTarget = SCHOOL_YEAR.weeklyHours;
+
+      const data = [];
+      data.push(['Kalenderwoche', 'Jahr', 'Datum', 'Von', 'Bis', 'Dauer (h)', 'Kategorie', 'Projekt', 'Beschreibung', 'Wochensumme', 'Wochenziel', 'Bilanz']);
+
+      weekStats.forEach(week => {
+        const weekBalance = week.total - weeklyTarget;
+
+        week.entries.forEach((entry, index) => {
+          const category = categories.find(c => c.id === entry.category) || categories[0];
+          
+          data.push([
+            index === 0 ? `KW${week.week}` : '',
+            index === 0 ? week.year : '',
+            new Date(entry.date).toLocaleDateString('de-DE'),
+            entry.startTime,
+            entry.endTime,
+            entry.duration.toFixed(2),
+            category.name,
+            entry.project || '',
+            entry.description,
+            index === 0 ? week.total.toFixed(2) : '',
+            index === 0 ? weeklyTarget.toFixed(1) : '',
+            index === 0 ? weekBalance.toFixed(2) : ''
+          ]);
+        });
+      });
+
+      try {
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        
+        ws['!cols'] = [
+          { wch: 12 },
+          { wch: 6 },
+          { wch: 12 },
+          { wch: 8 },
+          { wch: 8 },
+          { wch: 10 },
+          { wch: 25 },
+          { wch: 20 },
+          { wch: 50 },
+          { wch: 12 },
+          { wch: 12 },
+          { wch: 10 }
+        ];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Zeiterfassung');
+
+        const filename = `Zeiterfassung_${new Date().toISOString().split('T')[0]}.xlsx`;
+        
+        XLSX.writeFile(wb, filename);
+        
+        showToast('📊 Excel-Report wird heruntergeladen!', 'success');
+      } catch (error) {
+        console.error('Excel Export Fehler:', error);
+        showToast('Fehler beim Excel-Export.', 'error');
+      }
+    }
+
+    async function init() {
+      console.log('Initialisierung gestartet...');
+      
+      // Prüfe GitHub-Konfiguration
+      if (GITHUB_CONFIG.owner === 'DEIN_GITHUB_USERNAME' || 
+          GITHUB_CONFIG.repo === 'DEIN_REPOSITORY_NAME' || 
+          GITHUB_CONFIG.token === 'DEIN_PERSONAL_ACCESS_TOKEN') {
+        console.warn('⚠️ GitHub nicht konfiguriert. Bitte trage deine Daten in GITHUB_CONFIG ein.');
+        showToast('⚠️ GitHub nicht konfiguriert! Daten werden nur lokal gespeichert.', 'error');
+        loadFromLocalStorage();
+      } else {
+        // Daten von GitHub laden
+        await loadFromGitHub();
+      }
+      
+      // App rendern
+      renderApp();
+      
+      console.log('Zeiterfassung erfolgreich gestartet!');
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+ </body>
+</html>
